@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ITube | Kirish</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      max-width: 460px; width: 100%;
+      background: #fff; border-radius: 28px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.35);
+      padding: 40px 36px;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .brand i { font-size: 28px; color: #3b82f6; }
+    .brand span { font-weight: 800; font-size: 22px; color: #0f172a; }
+    h1 { font-size: 30px; font-weight: 800; color: #0f172a; margin-bottom: 4px; }
+    .sub { color: #64748b; font-size: 14px; margin-bottom: 22px; }
+    .tabs {
+      display: flex; gap: 6px; margin-bottom: 24px;
+      border-bottom: 2px solid #e2e8f0; padding-bottom: 10px;
+    }
+    .tabs button {
+      flex: 1; background: transparent; border: none;
+      padding: 10px 14px; font-weight: 600; font-size: 14px;
+      color: #94a3b8; cursor: pointer; border-radius: 30px;
+      transition: 0.2s; font-family: inherit;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .tabs button.active {
+      color: #fff;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      box-shadow: 0 6px 16px rgba(59,130,246,0.35);
+    }
+    .tabs button i { font-size: 13px; }
+    .form-container { display: none; }
+    .form-container.active { display: block; animation: fadeSlide 0.3s ease; }
+    @keyframes fadeSlide {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block; font-weight: 600; font-size: 13px;
+      color: #1e293b; margin-bottom: 6px;
+    }
+    .form-group input, .form-group select {
+      width: 100%; padding: 13px 16px;
+      border: 2px solid #e2e8f0; border-radius: 12px;
+      font-size: 15px; font-family: inherit;
+      background: #f8fafc; transition: 0.2s;
+      color: #1e293b; cursor: pointer;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none; border-color: #3b82f6;
+      background: #fff; box-shadow: 0 0 0 4px rgba(59,130,246,0.12);
+    }
+    .form-group select:disabled {
+      opacity: 0.55; cursor: not-allowed; background: #f1f5f9;
+    }
+    .form-group input::placeholder { color: #94a3b8; }
+    .btn-primary {
+      width: 100%; padding: 15px;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      border: none; border-radius: 12px; color: #fff;
+      font-weight: 700; font-size: 15px; cursor: pointer;
+      transition: 0.2s; font-family: inherit; margin-top: 6px;
+      box-shadow: 0 8px 20px rgba(59,130,246,0.3);
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 12px 28px rgba(59,130,246,0.4); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+    .register-link { text-align: center; margin-top: 20px; font-size: 14px; color: #64748b; }
+    .register-link a { color: #3b82f6; font-weight: 700; text-decoration: none; }
+    .register-link a:hover { text-decoration: underline; }
+    .error-msg {
+      background: #fee2e2; color: #b91c1c;
+      padding: 12px 16px; border-radius: 12px;
+      margin-bottom: 16px; font-size: 13px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .info-note {
+      background: #eff6ff; color: #1e40af;
+      padding: 14px 16px; border-radius: 12px;
+      margin-top: 14px; font-size: 12.5px;
+      line-height: 1.6; display: flex; gap: 10px;
+    }
+    .info-note i { margin-top: 2px; flex-shrink: 0; }
+    .info-note code {
+      background: #dbeafe; padding: 1px 6px; border-radius: 4px;
+      font-size: 12px; font-family: 'Courier New', monospace; color: #1e40af;
+    }
+    @media (max-width: 480px) {
+      .container { padding: 28px 22px; border-radius: 22px; }
+      h1 { font-size: 24px; }
+      .tabs button { font-size: 13px; padding: 9px 8px; }
+      .tabs button i { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="brand">
+    <i class="fas fa-graduation-cap"></i>
+    <span>ITube</span>
+  </div>
+  <h1>Xush kelibsiz!</h1>
+  <p class="sub">ITube – maktablar uchun ta’lim platformasi</p>
+
+  {{ if .Error }}
+  <div class="error-msg">
+    <i class="fas fa-exclamation-circle"></i> {{ .Error }}
+  </div>
+  {{ end }}
+
+  <div class="tabs">
+    <button id="tabUser" class="active" onclick="switchTab('user')">
+      <i class="fas fa-user"></i> Foydalanuvchi
+    </button>
+    <button id="tabSchool" onclick="switchTab('school')">
+      <i class="fas fa-school"></i> Maktab / Sinf
+    </button>
+  </div>
+
+  <!-- USER LOGIN -->
+  <div id="userForm" class="form-container active">
+    <form method="post" action="/auth/login">
+      <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+      <div class="form-group">
+        <label>👤 Username</label>
+        <input type="text" name="username" placeholder="Foydalanuvchi nomingiz" required autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label>🔒 Parol</label>
+        <input type="password" name="password" placeholder="Parolingiz" required autocomplete="current-password">
+      </div>
+      <button type="submit" class="btn-primary">Kirish →</button>
+    </form>
+    <div class="register-link">
+      Ro‘yxatdan o‘tmagan bo‘lsangiz? <a href="/account/register">Ro‘yxatdan o‘tish</a>
+    </div>
+  </div>
+
+  <!-- SCHOOL / CLASS LOGIN -->
+  <div id="schoolForm" class="form-container">
+    <form method="post" action="/auth/school-login">
+      <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+
+      <div class="form-group">
+        <label>📍 Viloyatni tanlang</label>
+        <select id="regionSelect" required>
+          <option value="">— Viloyatni tanlang —</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>🏫 Maktabni tanlang</label>
+        <select id="schoolSelect" name="school_id" required disabled>
+          <option value="">— Avval viloyatni tanlang —</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>🔒 Parol</label>
+        <input type="password" name="password" placeholder="Maktab yoki sinf paroli" required autocomplete="current-password">
+      </div>
+
+      <button type="submit" class="btn-primary">Kirish →</button>
+    </form>
+
+    <div class="info-note">
+      <i class="fas fa-info-circle"></i>
+      <div>
+        <strong>Maktab admini:</strong> parol <code>{maktab raqami}maktab</code><br>
+        <em>Masalan: <code>21maktab</code></em><br><br>
+        <strong>Sinf vakili:</strong> parol <code>{sinf}sinf</code><br>
+        <em>Masalan: <code>9Asinf</code>, <code>1Asinf</code>, <code>3Bsinf</code></em>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function switchTab(tab) {
+    document.getElementById('userForm').classList.toggle('active', tab === 'user');
+    document.getElementById('schoolForm').classList.toggle('active', tab === 'school');
+    document.getElementById('tabUser').classList.toggle('active', tab === 'user');
+    document.getElementById('tabSchool').classList.toggle('active', tab === 'school');
+  }
+
+  (function() {
+    const regionSelect = document.getElementById('regionSelect');
+    const schoolSelect = document.getElementById('schoolSelect');
+    let allSchools = [];
+
+    function loadSchools() {
+      fetch('/api/schools')
+        .then(res => res.ok ? res.json() : Promise.reject('Server xatosi'))
+        .then(data => {
+          allSchools = data.results || [];
+          populateRegions();
+        })
+        .catch(err => {
+          regionSelect.innerHTML = '<option value="">Yuklashda xatolik</option>';
+        });
+    }
+
+    function populateRegions() {
+      const regions = [...new Set(allSchools.map(s => s.region))].sort();
+      regionSelect.innerHTML = '<option value="">— Viloyatni tanlang —</option>';
+      regions.forEach(reg => {
+        const opt = document.createElement('option');
+        opt.value = reg;
+        opt.textContent = reg;
+        regionSelect.appendChild(opt);
+      });
+    }
+
+    regionSelect.addEventListener('change', function() {
+      const region = this.value;
+      schoolSelect.innerHTML = '';
+      if (!region) {
+        schoolSelect.innerHTML = '<option value="">— Avval viloyatni tanlang —</option>';
+        schoolSelect.disabled = true;
+        return;
+      }
+      const schools = allSchools.filter(s => s.region === region);
+      schoolSelect.innerHTML = '<option value="">— Maktabni tanlang —</option>';
+      schools.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = s.name;
+        schoolSelect.appendChild(opt);
+      });
+      schoolSelect.disabled = false;
+    });
+
+    loadSchools();
+  })();
+</script>
+</body>
+</html>

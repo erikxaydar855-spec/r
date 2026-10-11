@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{{ .New.Title }} - ITube</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    body { background:#f4f7fc; font-family:'Segoe UI',Arial,sans-serif; margin:0; }
+    .container { max-width:1200px; margin:0 auto; padding:20px; }
+    .video-card { background:#fff; border-radius:16px; padding:25px; box-shadow:0 4px 20px rgba(0,0,0,0.05); margin-bottom:30px; }
+    .video-title { font-size:26px; font-weight:700; color:#222; }
+    .video-meta { display:flex; gap:20px; font-size:14px; color:#666; margin:10px 0; }
+    .badge-cat { background:#006eff; color:#fff; padding:6px 16px; border-radius:20px; font-size:13px; display:inline-block; }
+    .desc { color:#444; line-height:1.7; padding:20px; background:#f9fafc; border-left:4px solid #006eff; border-radius:8px; }
+    .progress-wrapper { margin:20px 0; }
+    .progress-bar { width:100%; height:14px; background:#e9ecef; border-radius:30px; overflow:hidden; }
+    .progress-fill { height:100%; width:0%; background:#006eff; transition:width 0.3s; }
+    .progress-label { display:flex; justify-content:space-between; font-size:14px; color:#475569; margin-top:6px; }
+    .form-card { background:#eef2ff; padding:20px; border-radius:12px; border:1px solid #c7d2fe; margin-top:20px; }
+    .form-card label { display:block; font-weight:600; margin: 10px 0 6px; font-size:14px; color:#1e293b; }
+    .form-card input[type="number"], .form-card input[type="text"] { width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; }
+    .form-card button { background:#006eff; color:#fff; padding:12px; border:none; border-radius:8px; width:100%; font-weight:600; cursor:pointer; margin-top: 14px; }
+    .success-animation { text-align:center; padding:30px 10px; }
+    .success-animation .check-icon { font-size:72px; color:#22c55e; animation:pop 0.5s ease; }
+    .success-animation .msg { font-size:22px; font-weight:700; color:#0f172a; margin-top:10px; }
+    @keyframes pop { 0% { transform:scale(0); opacity:0; } 80% { transform:scale(1.2); } 100% { transform:scale(1); opacity:1; } }
+    .ai-chat { background:#fff; border-radius:16px; padding:25px; margin-top:30px; box-shadow:0 4px 20px rgba(0,0,0,0.05); }
+    .ai-chat input { width:70%; padding:14px 20px; border:2px solid #e2e8f0; border-radius:50px; font-size:16px; }
+    .ai-chat button { background:#006eff; color:#fff; padding:14px 30px; border:none; border-radius:50px; font-weight:600; cursor:pointer; }
+    .ai-response { margin-top:20px; padding:18px; background:#f8fafc; border-radius:14px; border-left:5px solid #006eff; display:none; }
+    .ai-response.show { display:block; }
+
+    /* Multi-select o'quvchilar */
+    .student-multiselect { position: relative; margin-top: 6px; }
+    .student-search { width: 100%; padding: 10px 14px; border:2px solid #cbd5e1; border-radius:8px; font-size: 14px; background: white; }
+    .student-search:focus { outline: none; border-color: #006eff; box-shadow: 0 0 0 4px rgba(0,110,255,0.12); }
+    .student-dropdown { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: white; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); max-height: 220px; overflow-y: auto; display: none; z-index: 20; border: 1px solid #e2e8f0; }
+    .student-dropdown.open { display: block; }
+    .student-option { padding: 10px 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 14px; border-bottom: 1px solid #f1f5f9; }
+    .student-option:last-child { border-bottom: none; }
+    .student-option:hover { background: #f0f9ff; }
+    .student-option input[type="checkbox"] { width: auto; margin: 0; cursor: pointer; }
+    .student-option.checked { background: #eff6ff; }
+    .selected-students { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .student-chip { background: #3b82f6; color: white; padding: 4px 10px 4px 12px; border-radius: 30px; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+    .student-chip .remove { cursor: pointer; font-weight: 700; opacity: 0.8; }
+    .student-chip .remove:hover { opacity: 1; }
+    .no-students-msg { padding: 12px; color: #64748b; font-size: 13px; text-align: center; }
+
+    /* Responsive */
+    @media (max-width: 992px) {
+      .container { padding:14px; }
+      .video-card { padding:16px; border-radius:14px; }
+      .video-title { font-size:20px; }
+      .ai-chat input { width:100%; margin-bottom:10px; border-radius:12px; }
+      .ai-chat button { width:100%; border-radius:12px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="video-card">
+    <div style="display:flex; justify-content:space-between;">
+      <h1 class="video-title">{{ .New.Title }}</h1>
+      <a href="/"><i class="fas fa-times" style="font-size:24px; color:#006eff;"></i></a>
+    </div>
+    <div class="video-meta"><span>{{ .New.CreatedTime }}</span><span>Admin tomonidan</span></div>
+    <span class="badge-cat">{{ .New.CategoryName }}</span>
+
+    {{ if .New.VideoURL }}
+      {{ if isYouTube .New.VideoURL }}
+        <div style="position:relative; padding-bottom:56.25%; height:0; border-radius:12px; margin:20px 0;">
+          <iframe id="ytplayer" src="{{ .New.VideoURL | toEmbedURL }}" style="position:absolute; top:0; left:0; width:100%; height:100%; border:0;" allowfullscreen></iframe>
+        </div>
+      {{ else if isVideoFile .New.VideoURL }}
+        <video id="videoplayer" controls style="width:100%; border-radius:12px; margin:20px 0;">
+          <source src="{{ .New.VideoURL }}" type="video/mp4">
+        </video>
+      {{ else }}
+        <div style="position:relative; padding-bottom:56.25%; height:0; border-radius:12px; margin:20px 0;">
+          <iframe src="{{ .New.VideoURL }}" style="position:absolute; top:0; left:0; width:100%; height:100%; border:0;" allowfullscreen></iframe>
+        </div>
+      {{ end }}
+    {{ end }}
+
+    <div class="progress-wrapper">
+      <div class="progress-bar"><div id="progressFill" class="progress-fill" style="width:{{ .Progress }}%;"></div></div>
+      <div class="progress-label"><span>Ko‘rilgan qism</span><span id="progressText">{{ .Progress }}%</span></div>
+    </div>
+
+    {{ if eq .Role "class" }}
+    <div id="lessonForm" style="{{ if lt .Progress 100 }}display:none;{{ end }}">
+      <div class="form-card">
+        <h4 style="margin-top:0;">📋 Dars ma'lumotlari</h4>
+        <div id="lessonFormInputs">
+          <label>1. Nechanchi soat?</label>
+          <input type="number" id="hour" placeholder="Masalan: 3" min="1" required>
+
+          <label>2. Fan nomi</label>
+          <input type="text" id="subject" placeholder="Masalan: Matematika" required>
+
+          <label>3. Darsda kimlar faol qatnashdi?</label>
+          <div class="student-multiselect">
+            <input type="text" id="studentSearch" class="student-search" placeholder="O‘quvchini qidirish..." autocomplete="off">
+            <div id="studentDropdown" class="student-dropdown">
+              {{ if .ClassStudents }}
+                {{ range .ClassStudents }}
+                <label class="student-option" data-name="{{ .FullName }}">
+                  <input type="checkbox" value="{{ .ID }}" class="student-checkbox">
+                  <span>{{ .FullName }}</span>
+                </label>
+                {{ end }}
+              {{ else }}
+                <div class="no-students-msg">Sinfda o‘quvchilar yo‘q. Admin panelidan qo‘shing.</div>
+              {{ end }}
+            </div>
+          </div>
+          <div id="selectedStudents" class="selected-students"></div>
+        </div>
+
+        <div id="lessonSuccess" style="display:none;">
+          <div class="success-animation">
+            <div class="check-icon">✅</div>
+            <div class="msg">Yuborildi!</div>
+          </div>
+        </div>
+        <button id="sendLessonBtn">Yuborish</button>
+      </div>
+    </div>
+    {{ end }}
+
+    <div class="desc">{{ .New.Body }}</div>
+  </div>
+
+  <div class="ai-chat">
+    <h3><i class="fas fa-robot"></i> ITube AI Yordamchi</h3>
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <input type="text" id="aiInput" placeholder="Video haqida savol yozing...">
+      <button id="aiBtn">So‘ra</button>
+    </div>
+    <div id="aiResponse" class="ai-response"></div>
+  </div>
+</div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+(function(){
+  const progressFill = document.getElementById('progressFill');
+  const progressText = document.getElementById('progressText');
+  const lessonForm = document.getElementById('lessonForm');
+  const videoID = {{ .New.ID }};
+  let formOpened = false;
+  let lastSent = 0;
+  const THROTTLE = 5;
+
+  function updateUI(p) {
+    p = Math.min(100, Math.max(0, p));
+    const rounded = Math.round(p);
+    progressFill.style.width = p + '%';
+    progressText.textContent = rounded + '%';
+    if (p >= 99.5 && !formOpened) { forceComplete(); return; }
+    if (p >= 100 && !formOpened) {
+      formOpened = true;
+      if (lessonForm) lessonForm.style.display = 'block';
+    } else {
+      if (lessonForm && !formOpened) lessonForm.style.display = 'none';
+    }
+  }
+  function forceComplete() {
+    if (formOpened) return;
+    formOpened = true;
+    progressFill.style.width = '100%';
+    progressText.textContent = '100%';
+    if (lessonForm) lessonForm.style.display = 'block';
+  }
+  function sendProgress(p) {
+    const now = Math.floor(Date.now() / 1000);
+    if (now - lastSent < THROTTLE) return;
+    lastSent = now;
+    fetch('/api/progress', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({video_id: videoID, percent: Math.round(p)})
+    }).catch(()=>{});
+  }
+
+  const video = document.getElementById('videoplayer');
+  if (video) {
+    video.addEventListener('loadedmetadata', function() { updateUI(0); });
+    video.addEventListener('timeupdate', function() {
+      if (video.duration) {
+        const p = (video.currentTime / video.duration) * 100;
+        if (video.duration - video.currentTime < 0.5) forceComplete();
+        else { updateUI(p); sendProgress(p); }
+      }
+    });
+    video.addEventListener('ended', function() { forceComplete(); sendProgress(100); });
+    video.addEventListener('pause', function() {
+      if (video.duration) sendProgress((video.currentTime / video.duration) * 100);
+    });
+    updateUI(0);
+  }
+
+  let ytPlayer = null;
+  let ytInterval = null;
+  function initYT() {
+    if (typeof YT !== 'undefined' && YT.loaded && document.getElementById('ytplayer')) {
+      ytPlayer = new YT.Player('ytplayer', {
+        events: {
+          'onReady': function() {
+            if (ytInterval) clearInterval(ytInterval);
+            ytInterval = setInterval(function() {
+              if (ytPlayer && ytPlayer.getDuration) {
+                const dur = ytPlayer.getDuration();
+                const cur = ytPlayer.getCurrentTime();
+                if (dur > 0) {
+                  if (dur - cur < 0.5) forceComplete();
+                  else { updateUI((cur / dur) * 100); sendProgress((cur / dur) * 100); }
+                }
+              }
+            }, 500);
+          },
+          'onStateChange': function(e) {
+            if (e.data == YT.PlayerState.ENDED) { forceComplete(); sendProgress(100); }
+          }
+        }
+      });
+    } else { setTimeout(initYT, 500); }
+  }
+  if (typeof YT !== 'undefined' && YT.loaded) initYT();
+  else window.onYouTubeIframeAPIReady = initYT;
+
+  // ===== MULTI-SELECT O'QUVCHILAR =====
+  const studentSearch = document.getElementById('studentSearch');
+  const studentDropdown = document.getElementById('studentDropdown');
+  const selectedStudentsBox = document.getElementById('selectedStudents');
+  const selectedStudents = new Set();
+
+  function renderSelectedChips() {
+    selectedStudentsBox.innerHTML = '';
+    selectedStudents.forEach(id => {
+      const cb = document.querySelector('.student-checkbox[value="' + id + '"]');
+      if (!cb) return;
+      const name = cb.closest('.student-option').dataset.name;
+      const chip = document.createElement('span');
+      chip.className = 'student-chip';
+      chip.innerHTML = name + ' <span class="remove" data-id="' + id + '">✕</span>';
+      selectedStudentsBox.appendChild(chip);
+    });
+  }
+
+  if (studentSearch) {
+    studentSearch.addEventListener('focus', () => {
+      studentDropdown.classList.add('open');
+    });
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.student-multiselect')) studentDropdown.classList.remove('open');
+    });
+    studentSearch.addEventListener('input', function() {
+      const q = this.value.toLowerCase();
+      document.querySelectorAll('.student-option').forEach(opt => {
+        const name = opt.dataset.name.toLowerCase();
+        opt.style.display = name.includes(q) ? '' : 'none';
+      });
+    });
+
+    // Checkbox o'zgartirilganda
+    document.querySelectorAll('.student-checkbox').forEach(cb => {
+      cb.addEventListener('change', function() {
+        const id = parseInt(this.value);
+        const parent = this.closest('.student-option');
+        if (this.checked) {
+          selectedStudents.add(id);
+          parent.classList.add('checked');
+        } else {
+          selectedStudents.delete(id);
+          parent.classList.remove('checked');
+        }
+        renderSelectedChips();
+      });
+    });
+
+    // Chip olib tashlanganda
+    selectedStudentsBox.addEventListener('click', (e) => {
+      if (e.target.classList.contains('remove')) {
+        const id = parseInt(e.target.dataset.id);
+        selectedStudents.delete(id);
+        const cb = document.querySelector('.student-checkbox[value="' + id + '"]');
+        if (cb) {
+          cb.checked = false;
+          cb.closest('.student-option').classList.remove('checked');
+        }
+        renderSelectedChips();
+      }
+    });
+  }
+
+  // ===== YUBORISH =====
+    const sendBtn = document.getElementById('sendLessonBtn');
+  if (sendBtn) {
+    sendBtn.addEventListener('click', function(){
+      const inputsDiv = document.getElementById('lessonFormInputs');
+      const successDiv = document.getElementById('lessonSuccess');
+      const btn = this;
+      const hour = parseInt(document.getElementById('hour').value) || 0;
+      const subject = document.getElementById('subject').value.trim();
+      if (hour < 1 || subject === '') {
+        alert('Iltimos, soat va fan nomini to‘ldiring.');
+        return;
+      }
+      const activeIds = Array.from(selectedStudents);
+      const data = {
+        hour: hour,
+        subject: subject,
+        video_id: videoID,
+        active_ids: activeIds
+      };
+      btn.disabled = true;
+      btn.textContent = 'Yuborilmoqda...';
+      fetch('/api/lesson', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(data)
+      })
+      .then(res => {
+        if (res.ok) {
+          inputsDiv.style.display = 'none';
+          successDiv.style.display = 'block';
+          btn.style.display = 'none';
+        } else {
+          alert('❌ Xatolik yuz berdi.');
+          btn.disabled = false;
+          btn.textContent = 'Yuborish';
+        }
+      })
+      .catch(() => {
+        alert('❌ Server xatosi.');
+        btn.disabled = false;
+        btn.textContent = 'Yuborish';
+      });
+    });
+  }
+
+  // ===== AI CHAT =====
+  const aiBtn = document.getElementById('aiBtn');
+  const aiInput = document.getElementById('aiInput');
+  const aiResp = document.getElementById('aiResponse');
+  aiBtn.addEventListener('click', function(){
+    const q = aiInput.value.trim();
+    if (!q) { aiResp.className = 'ai-response show'; aiResp.textContent = 'Iltimos, savol yozing.'; return; }
+    aiResp.className = 'ai-response show';
+    aiResp.textContent = 'Kutilmoqda...';
+    fetch('/api/chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ query: q, video_id: videoID })
+    })
+    .then(res => res.json())
+    .then(data => { aiResp.textContent = data.response || 'Javob topilmadi.'; })
+    .catch(err => { aiResp.textContent = 'Xatolik: ' + err.message; });
+  });
+  aiInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') aiBtn.click();
+  });
+})();
+</script>
+</body>
+</html>

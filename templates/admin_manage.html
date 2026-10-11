@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Admin – Maktablar va sinflar</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            background: #f1f5f9;
+        }
+
+        .sidebar {
+            background: #0f172a;
+            min-height: 100vh;
+            padding: 20px 0;
+        }
+
+        .sidebar .nav-link {
+            color: #94a3b8;
+            border-radius: 8px;
+            padding: 12px 20px;
+            margin: 4px 12px;
+        }
+
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            background: #1e293b;
+            color: #fff;
+        }
+
+        .sidebar .nav-link i {
+            margin-right: 12px;
+        }
+
+        .main-content {
+            padding: 30px;
+        }
+
+        .card {
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .badge-pwd {
+            background: #fef3c7;
+            color: #92400e;
+            font-family: monospace;
+            padding: 4px 10px;
+            border-radius: 6px;
+        }
+
+        .class-link {
+            display: inline-block;
+        }
+
+        .class-link.active {
+            background: #0d6efd;
+            color: #fff;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid p-0">
+        <div class="row g-0">
+            <div class="col-md-3 col-lg-2 sidebar">
+                <div class="text-center text-white py-3">
+                    <h4><i class="bi bi-camera-video"></i> ITube</h4>
+                    <small class="text-secondary">Admin panel</small>
+                </div>
+                <hr class="border-secondary">
+                <nav class="nav flex-column">
+                    <a href="/admin/videos" class="nav-link"><i class="bi bi-collection-play"></i> Videolar</a>
+                    <a href="/admin/manage" class="nav-link active"><i class="bi bi-building-gear"></i> Maktab va
+                        sinflar</a>
+                    <a href="/admin/schools" class="nav-link"><i class="bi bi-building"></i> Maktablar ro‘yxati</a>
+                    <a href="/" class="nav-link"><i class="bi bi-globe2"></i> Saytga o‘tish</a>
+                    <a href="/logout" class="nav-link"><i class="bi bi-box-arrow-right"></i> Chiqish</a>
+                </nav>
+            </div>
+
+            <div class="col-md-9 col-lg-10 main-content">
+                <h2><i class="bi bi-building-gear text-primary"></i> Maktablar va sinflar boshqaruvi</h2>
+
+                <!-- Yangi maktab qo'shish -->
+                <div class="card my-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">➕ Yangi maktab qo‘shish</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" action="/admin/manage/school/add" class="row g-3">
+                            <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+                            <div class="col-md-5">
+                                <label class="form-label">Maktab nomi</label>
+                                <input type="text" name="school_name" class="form-control"
+                                    placeholder="Masalan: 21-maktab" required>
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label">Viloyat</label>
+                                <select name="region" class="form-select" required>
+                                    <option value="">Tanlang</option>
+                                    <option value="Toshkent">Toshkent</option>
+                                    <option value="Samarqand">Samarqand</option>
+                                    <option value="Buxoro">Buxoro</option>
+                                    <option value="Navoiy">Navoiy</option>
+                                    <option value="Farg'ona">Farg'ona</option>
+                                    <option value="Namangan">Namangan</option>
+                                    <option value="Andijon">Andijon</option>
+                                    <option value="Qashqadaryo">Qashqadaryo</option>
+                                    <option value="Surxondaryo">Surxondaryo</option>
+                                    <option value="Xorazm">Xorazm</option>
+                                    <option value="Qoraqalpog'iston">Qoraqalpog'iston</option>
+                                    <option value="Sirdaryo">Sirdaryo</option>
+                                    <option value="Jizzax">Jizzax</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary w-100">Qo‘shish</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Maktablar ro'yxati -->
+                <div class="card mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">🏫 Maktablar ro‘yxati</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Maktab</th>
+                                    <th>Viloyat</th>
+                                    <th>Parol</th>
+                                    <th>Sinflar</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{ range .Schools }}
+                                <tr>
+                                    <td>{{ .ID }}</td>
+                                    <td><strong>{{ .SchoolName }}</strong></td>
+                                    <td>{{ .Region }}</td>
+                                    <td><span class="badge-pwd">{{ .SchoolPassword }}</span></td>
+                                    <td>{{ .ClassCount }}</td>
+                                    <td>
+                                        <a href="/admin/manage?school_id={{ .ID }}"
+                                            class="btn btn-sm btn-outline-primary">Sinflar</a>
+                                        <form method="post" action="/admin/manage/school/delete/{{ .ID }}"
+                                            style="display:inline" onsubmit="return confirm('O‘chirilsinmi?')">
+                                            <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
+                                            <button type="submit"
+                                                class="btn btn-sm btn-outline-danger">O‘chirish</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {{ else }}
+                                <tr>
+                                    <td colspan="6" class="text-center py-3 text-secondary">Hali maktablar yo‘q</td>
+                                </tr>
+                                {{ end }}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {{ if .SelectedSchool }}
+                <!-- Sinf qo'shish -->
+                <div class="card mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">➕ {{ .SelectedSchool.SchoolName }} ga sinf qo‘shish</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" action="/admin/manage/class/add" class="row g-3">
+                            <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+                            <input type="hidden" name="school_id" value="{{ .SelectedSchool.ID }}">
+                            <div class="col-md-2"><label class="form-label">Sinf raqami</label><input type="number"
+                                    name="class_number" class="form-control" placeholder="9" required min="1"></div>
+                            <div class="col-md-2"><label class="form-label">Harf</label><input type="text"
+                                    name="class_letter" class="form-control" placeholder="A" maxlength="1" required>
+                            </div>
+                            <div class="col-md-3"><label class="form-label">Sinf sardori</label><input type="text"
+                                    name="class_leader" class="form-control" placeholder="F.I.O" required></div>
+                            <div class="col-md-3"><label class="form-label">Sinf rahbari</label><input type="text"
+                                    name="class_teacher" class="form-control" placeholder="F.I.O" required></div>
+                            <div class="col-md-2 d-flex align-items-end"><button type="submit"
+                                    class="btn btn-success w-100">Qo‘shish</button></div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Sinflar jadvali -->
+                <div class="card mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">🎓 {{ .SelectedSchool.SchoolName }} — sinflar</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Sinf</th>
+                                    <th>Rahbar</th>
+                                    <th>Sardor</th>
+                                    <th>Parol</th>
+                                    <th>O‘quvchilar</th>
+                                    <th>Harakatlar</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{ range .SelectedSchool.Classes }}
+                                <tr>
+                                    <td>{{ .ID }}</td>
+                                    <td><strong>{{ .ClassName }}</strong></td>
+                                    <td>{{ .ClassTeacher }}</td>
+                                    <td>{{ .ClassLeader }}</td>
+                                    <td><span class="badge-pwd">{{ .ClassPassword }}</span></td>
+                                    <td><span class="badge bg-info">{{ .StudentCount }}</span></td>
+                                    <td>
+                                        <a href="/admin/manage/schedule?school_id={{ $.SelectedSchool.ID }}&class_id={{ .ID }}"
+                                            class="btn btn-sm btn-info">📅 Jadval</a>
+                                        <a href="/admin/manage?school_id={{ $.SelectedSchool.ID }}&class_id={{ .ID }}"
+                                            class="btn btn-sm btn-primary class-link {{ if and $.SelectedClass (eq $.SelectedClass.ID .ID) }}active{{ end }}">O‘quvchilar</a>
+                                        <form method="post" action="/admin/manage/class/delete/{{ .ID }}"
+                                            style="display:inline" onsubmit="return confirm('O‘chirilsinmi?')">
+                                            <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
+                                            <button type="submit"
+                                                class="btn btn-sm btn-outline-danger">O‘chirish</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {{ else }}
+                                <tr>
+                                    <td colspan="7" class="text-center py-3 text-secondary">Hali sinflar yo‘q</td>
+                                </tr>
+                                {{ end }}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {{ end }}
+
+                {{ if .SelectedClass }}
+                <!-- O'quvchi qo'shish -->
+                <div class="card mb-4">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0">👨‍🎓 {{ .SelectedClass.ClassName }} sinfiga o‘quvchi qo‘shish</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" action="/admin/manage/student/add" class="row g-3">
+                            <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+                            <input type="hidden" name="school_id" value="{{ .SelectedSchool.ID }}">
+                            <input type="hidden" name="class_id" value="{{ .SelectedClass.ID }}">
+
+                            <div class="col-md-4">
+                                <label class="form-label">F.I.SH</label>
+                                <input type="text" name="full_name" class="form-control"
+                                    placeholder="Familya Ism Sharif" required>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Tug‘ilgan yil</label>
+                                <input type="number" name="birth_year" class="form-control" placeholder="2010"
+                                    min="1950" max="2050">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Jinsi</label>
+                                <select name="gender" class="form-select">
+                                    <option value="">Tanlang</option>
+                                    <option value="O‘g‘il">O‘g‘il</option>
+                                    <option value="Qiz">Qiz</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Manzil (yashash joyi)</label>
+                                <input type="text" name="address" class="form-control" placeholder="Tuman, ko‘cha, uy">
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label">Asl qayerlik</label>
+                                <input type="text" name="origin" class="form-control"
+                                    placeholder="Masalan: Navoiy viloyati, Xatirchi tumani">
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button type="submit" class="btn btn-success w-100">O‘quvchi qo‘shish</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- O'quvchilar jadvali -->
+                <div class="card">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">📋 {{ .SelectedClass.ClassName }} — o‘quvchilar ({{ len .ClassStudents }})</h5>
+                        <a href="/admin/manage/schedule?school_id={{ .SelectedSchool.ID }}&class_id={{ .SelectedClass.ID }}"
+                            class="btn btn-sm btn-info">📅 Dars jadvali</a>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>F.I.SH</th>
+                                    <th>Tug‘ilgan yil</th>
+                                    <th>Jinsi</th>
+                                    <th>Manzil</th>
+                                    <th>Asl qayerlik</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{ range .ClassStudents }}
+                                <tr>
+                                    <td>{{ .ID }}</td>
+                                    <td><strong>{{ .FullName }}</strong></td>
+                                    <td>{{ .BirthYear }}</td>
+                                    <td>
+                                        {{ if eq .Gender "Qiz" }}<span class="badge"
+                                            style="background:#ec4899;">👧 {{ .Gender }}</span>
+                                        {{ else if eq .Gender "O‘g‘il" }}<span class="badge bg-primary">👦 {{ .Gender
+                                            }}</span>
+                                        {{ else }}{{ .Gender }}{{ end }}
+                                    </td>
+                                    <td>{{ .Address }}</td>
+                                    <td>{{ .Origin }}</td>
+                                    <td>
+                                        <form method="post" action="/admin/manage/student/delete/{{ .ID }}"
+                                            style="display:inline" onsubmit="return confirm('O‘quvchi o‘chirilsinmi?')">
+                                            <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
+                                            <button type="submit"
+                                                class="btn btn-sm btn-outline-danger">O‘chirish</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                {{ else }}
+                                <tr>
+                                    <td colspan="7" class="text-center py-3 text-secondary">Hali o‘quvchilar yo‘q</td>
+                                </tr>
+                                {{ end }}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {{ end }}
+
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

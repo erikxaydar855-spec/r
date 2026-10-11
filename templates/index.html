@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ITube – Taʼlim videolari</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: 'Inter', sans-serif; background: #f6f9fc; color: #1e293b; overflow-x: hidden; }
+
+    .navbar { background: #ffffff; padding: 14px 32px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 12px rgba(0,0,0,0.04); position: sticky; top: 0; z-index: 1000; }
+    .navbar .logo { font-size: 24px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px; }
+    .navbar .logo i { color: #3b82f6; font-size: 28px; }
+    .nav-actions { display: flex; align-items: center; gap: 18px; }
+
+    .avatar-wrapper { position: relative; cursor: pointer; }
+    .avatar-wrapper .avatar { width: 40px; height: 40px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #475569; transition: 0.2s; border: 2px solid transparent; overflow: hidden; }
+    .avatar-wrapper .avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .avatar-wrapper .avatar:hover { border-color: #3b82f6; }
+    .avatar-wrapper .dropdown { position: absolute; right: 0; top: 48px; background: white; border-radius: 16px; box-shadow: 0 20px 40px -12px rgba(0,0,0,0.25); min-width: 220px; padding: 8px 0; display: none; overflow: hidden; border: 1px solid #eef2f6; }
+    .avatar-wrapper .dropdown.show { display: block; }
+    .dropdown-item { padding: 12px 20px; display: flex; align-items: center; gap: 12px; color: #1e293b; text-decoration: none; font-size: 14px; font-weight: 500; transition: 0.15s; }
+    .dropdown-item:hover { background: #f1f5f9; }
+    .dropdown-item i { width: 20px; color: #64748b; }
+    .dropdown-divider { height: 1px; background: #eef2f6; margin: 6px 0; }
+    .dropdown-username { padding: 10px 20px; font-weight: 700; color: #0f172a; border-bottom: 1px solid #eef2f6; margin-bottom: 4px; }
+
+    .hero { text-align: center; padding: 40px 20px 10px; max-width: 900px; margin: 0 auto; }
+    .hero h1 { font-size: 38px; font-weight: 800; color: #0f172a; line-height: 1.15; }
+    .hero h1 span { color: #3b82f6; }
+    .hero p { color: #64748b; font-size: 16px; margin-top: 10px; }
+
+    .search-box { max-width: 640px; margin: 22px auto 0; display: flex; background: white; border-radius: 60px; padding: 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; }
+    .search-box input { flex: 1; padding: 12px 22px; border: none; outline: none; font-size: 15px; background: transparent; border-radius: 60px; }
+    .search-box button { background: #3b82f6; border: none; color: white; padding: 10px 24px; border-radius: 60px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+    .search-box button:hover { background: #2563eb; }
+
+    .categories-3d-wrapper {
+      position: relative;
+      max-width: 520px;
+      margin: 24px auto 0;
+      height: 220px;
+      overflow: hidden;
+      perspective: 1100px;
+      perspective-origin: 50% 50%;
+      mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%);
+    }
+
+    .categories-3d-scroll {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 20px 20px;
+      overflow-y: auto;
+      scroll-behavior: smooth;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      transform-style: preserve-3d;
+    }
+    .categories-3d-scroll::-webkit-scrollbar { display: none; }
+
+    .categories-3d-scroll .chip {
+      display: inline-block;
+      background: white;
+      padding: 14px 26px;
+      border-radius: 30px;
+      font-size: 16px;
+      font-weight: 600;
+      color: #3730a3;
+      cursor: pointer;
+      border: 1px solid #e0e7ff;
+      box-shadow: 0 4px 14px rgba(59, 130, 246, 0.08);
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      white-space: nowrap;
+      transform-style: preserve-3d;
+      will-change: transform, filter, opacity;
+    }
+
+    .categories-3d-wrapper:hover .chip:not(:hover) {
+      filter: blur(3px);
+      opacity: 0.35;
+      transform: scale(0.92);
+    }
+
+    .categories-3d-scroll .chip:hover {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+      transform: scale(1.12) rotateX(-8deg);
+      border-color: #93c5fd;
+      box-shadow: 0 18px 36px -10px rgba(59, 130, 246, 0.5);
+      filter: blur(0) !important;
+      opacity: 1 !important;
+      z-index: 100;
+      position: relative;
+    }
+
+    .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 24px; max-width: 1280px; margin: 30px auto 60px; padding: 0 20px; }
+    .video-card { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.04); transition: 0.2s; border: 1px solid #edf2f7; cursor: pointer; }
+    .video-card:hover { transform: translateY(-4px); box-shadow: 0 12px 28px rgba(0,0,0,0.08); }
+    .video-card .thumb { width: 100%; aspect-ratio: 16/9; background: #e2e8f0; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 32px; overflow: hidden; position: relative; }
+    .video-card .thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .video-card .thumb .play-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 42px;
+      opacity: 0;
+      transition: 0.25s;
+    }
+    .video-card:hover .thumb .play-overlay { opacity: 1; }
+    .video-card .info { padding: 16px 18px; }
+    .video-card .info h4 { font-size: 16px; font-weight: 700; margin-bottom: 4px; color: #0f172a; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .video-card .info .cat { font-size: 13px; color: #3b82f6; font-weight: 600; display: inline-block; background: #eff6ff; padding: 2px 12px; border-radius: 30px; }
+    .video-card .info .desc { font-size: 14px; color: #64748b; margin-top: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .no-results { text-align: center; padding: 60px 20px; color: #64748b; font-size: 18px; grid-column: 1 / -1; }
+    .loading-spinner { text-align: center; padding: 40px; color: #94a3b8; grid-column: 1 / -1; }
+
+    @media (max-width: 640px) {
+      .hero h1 { font-size: 24px; }
+      .hero { padding: 24px 16px 10px; }
+      .categories-3d-wrapper { height: 200px; margin-top: 16px; }
+      .categories-3d-scroll .chip { padding: 10px 20px; font-size: 14px; }
+      .video-grid { grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 12px; }
+    }
+    @media (max-width: 480px) { .video-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<nav class="navbar">
+  <div class="logo"><i class="fas fa-graduation-cap"></i> ITube</div>
+  <div class="nav-actions">
+    {{ if .LoggedIn }}
+      <div class="avatar-wrapper" id="avatarWrapper">
+        <div class="avatar" id="avatarBtn">
+          {{ if .Avatar }}
+            <img src="{{ .Avatar }}" alt="avatar">
+          {{ else }}
+            <i class="fas fa-user-circle"></i>
+          {{ end }}
+        </div>
+        <div class="dropdown" id="avatarDropdown">
+          <div class="dropdown-username"><i class="fas fa-user"></i> {{ .Username }}</div>
+          {{ if .IsStaff }}
+            <a href="/admin/videos" class="dropdown-item"><i class="fas fa-tachometer-alt"></i> Admin panel</a>
+            <a href="/admin/schools" class="dropdown-item"><i class="fas fa-school"></i> Maktablar</a>
+          {{ else if eq .Role "school" }}
+            <a href="/myclasses" class="dropdown-item"><i class="fas fa-school"></i> Mening sinflarim</a>
+          {{ end }}
+          <a href="/profile" class="dropdown-item"><i class="fas fa-user-cog"></i> Profil sozlamalari</a>
+          <div class="dropdown-divider"></div>
+          <a href="/logout" class="dropdown-item"><i class="fas fa-sign-out-alt"></i> Chiqish</a>
+        </div>
+      </div>
+    {{ else }}
+      <a href="/auth" style="background:#3b82f6;color:white;border-radius:40px;padding:8px 20px;text-decoration:none;font-weight:600;">Kirish</a>
+    {{ end }}
+  </div>
+</nav>
+
+<div class="hero">
+  <h1>Bugun <span>yangi ko‘nikmalarni</span><br>o‘rganing</h1>
+  <p>Dunyoning eng yaxshi instruktorlari bilan taʼlimingizni oshiring</p>
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="Qidirish…" autocomplete="off">
+    <button id="searchBtn"><i class="fas fa-search"></i> Qidirish</button>
+  </div>
+</div>
+
+<div class="categories-3d-wrapper" id="categoriesWrapper">
+  <div class="categories-3d-scroll" id="categoriesScroll">
+    {{ range .Categories }}
+      <div class="chip" data-cat="{{ .Name }}">{{ .Name }}</div>
+    {{ end }}
+  </div>
+</div>
+
+<div id="videoGridContainer" class="video-grid">
+  {{ range .Videos }}
+    <div class="video-card" onclick="window.location.href='/video/{{ .Slug }}'">
+      <div class="thumb">
+        {{ if .Image }}
+          <img src="{{ .Image }}" alt="{{ .Title }}">
+        {{ else if isYouTube .VideoURL }}
+          <img src="{{ youtubeThumb .VideoURL }}" alt="{{ .Title }}">
+        {{ else }}
+          <i class="fas fa-play-circle"></i>
+        {{ end }}
+        <div class="play-overlay"><i class="fas fa-play"></i></div>
+      </div>
+      <div class="info">
+        <h4>{{ .Title }}</h4>
+        <span class="cat">{{ .CategoryName }}</span>
+        <div class="desc">{{ .Body | truncate 80 }}</div>
+      </div>
+    </div>
+  {{ else }}
+    <div class="no-results">Hali videolar mavjud emas</div>
+  {{ end }}
+</div>
+
+<script>
+  // ===== AVATAR DROPDOWN =====
+  (function() {
+    const avatarWrapper = document.getElementById('avatarWrapper');
+    const avatarBtn = document.getElementById('avatarBtn');
+    const avatarDropdown = document.getElementById('avatarDropdown');
+
+    if (avatarBtn && avatarDropdown) {
+      avatarBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        avatarDropdown.classList.toggle('show');
+      });
+      document.addEventListener('click', function() {
+        avatarDropdown.classList.remove('show');
+      });
+      avatarWrapper.addEventListener('click', function(e) { e.stopPropagation(); });
+    }
+  })();
+
+  // ===== QIDIRUV =====
+  function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+      if (m === '&') return '&amp;';
+      if (m === '<') return '&lt;';
+      if (m === '>') return '&gt;';
+      return m;
+    });
+  }
+
+  function performSearch(query) {
+    const gridContainer = document.getElementById('videoGridContainer');
+    if (!query.trim()) { window.location.reload(); return; }
+    gridContainer.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Qidirilmoqda…</div>';
+    fetch('/search-api?q=' + encodeURIComponent(query))
+      .then(res => res.json())
+      .then(data => {
+        if (data.results && data.results.length > 0) {
+          let html = '';
+          data.results.forEach(v => {
+            const imgHtml = v.image
+              ? `<img src="${v.image}" alt="${escapeHtml(v.title)}">`
+              : '<i class="fas fa-play-circle"></i>';
+            html += `
+              <div class="video-card" onclick="window.location.href='/video/${v.slug}'">
+                <div class="thumb">${imgHtml}<div class="play-overlay"><i class="fas fa-play"></i></div></div>
+                <div class="info">
+                  <h4>${escapeHtml(v.title)}</h4>
+                  <span class="cat">${escapeHtml(v.category)}</span>
+                  <div class="desc">${escapeHtml(v.body)}</div>
+                </div>
+              </div>
+            `;
+          });
+          gridContainer.innerHTML = html;
+        } else {
+          gridContainer.innerHTML = '<div class="no-results">Hech qanday natija topilmadi</div>';
+        }
+      })
+      .catch(() => {
+        gridContainer.innerHTML = '<div class="no-results">Xatolik yuz berdi</div>';
+      });
+  }
+
+  (function() {
+    const searchInput = document.getElementById('searchInput');
+    const searchBtn = document.getElementById('searchBtn');
+
+    searchBtn.addEventListener('click', function() { performSearch(searchInput.value); });
+    searchInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); searchBtn.click(); }
+    });
+  })();
+
+  // ===== VERTIKAL AUTO-SCROLL + 3D EFFEKT =====
+  (function() {
+    const wrapper = document.getElementById('categoriesWrapper');
+    const scroller = document.getElementById('categoriesScroll');
+    if (!scroller || !wrapper) return;
+
+    let paused = false;
+    let direction = 1;
+    let userScrollTimeout;
+    let scrollPos = 0;
+
+    wrapper.addEventListener('mouseenter', () => { paused = true; });
+    wrapper.addEventListener('mouseleave', () => { paused = false; });
+
+    scroller.addEventListener('touchstart', () => { paused = true; });
+    scroller.addEventListener('touchend', () => {
+      setTimeout(() => { paused = false; }, 2500);
+    });
+
+    scroller.addEventListener('wheel', () => {
+      paused = true;
+      scrollPos = scroller.scrollTop;
+      clearTimeout(userScrollTimeout);
+      userScrollTimeout = setTimeout(() => { paused = false; }, 2500);
+    });
+
+    setInterval(() => {
+      if (paused) return;
+      const maxScroll = scroller.scrollHeight - scroller.clientHeight;
+      if (maxScroll <= 0) return;
+
+      if (scrollPos >= maxScroll) direction = -1;
+      else if (scrollPos <= 0) direction = 1;
+
+      scrollPos += direction * 0.7;
+      scrollPos = Math.max(0, Math.min(maxScroll, scrollPos));
+      scroller.scrollTop = scrollPos;
+    }, 30);
+
+    const centerY = wrapper.clientHeight / 2;
+    function update3D() {
+      const chips = scroller.querySelectorAll('.chip');
+      const wrapperRect = wrapper.getBoundingClientRect();
+
+      chips.forEach(chip => {
+        if (chip.matches(':hover')) return;
+
+        const chipRect = chip.getBoundingClientRect();
+        const chipCenter = chipRect.top + chipRect.height / 2 - wrapperRect.top;
+        const distance = (chipCenter - centerY) / centerY;
+        const clampedDistance = Math.max(-1.2, Math.min(1.2, distance));
+
+        const rotateX = clampedDistance * -25;
+        const scale = 1 - Math.abs(clampedDistance) * 0.18;
+        const opacity = 1 - Math.abs(clampedDistance) * 0.35;
+
+        chip.style.transform = `rotateX(${rotateX}deg) scale(${scale})`;
+        chip.style.opacity = opacity;
+      });
+    }
+
+    scroller.addEventListener('scroll', update3D);
+    window.addEventListener('resize', update3D);
+    setInterval(update3D, 40);
+    setTimeout(update3D, 100);
+  })();
+
+  // ===== CHIP CLICK =====
+  (function() {
+    document.querySelectorAll('.categories-3d-scroll .chip').forEach(chip => {
+      chip.addEventListener('click', function() {
+        const cat = this.getAttribute('data-cat');
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) searchInput.value = cat;
+        performSearch(cat);
+      });
+    });
+  })();
+</script>
+</body>
+</html>

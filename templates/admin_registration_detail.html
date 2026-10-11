@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{{ .School.SchoolName }} – batafsil</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container py-4">
+  <h2>{{ .School.SchoolName }} <small>({{ .School.Region }})</small></h2>
+  <hr>
+  {{ range .Classes }}
+  <div class="card mb-3">
+    <div class="card-header"><strong>{{ .ClassName }}</strong></div>
+    <div class="card-body">
+      <p>Sardor: {{ .ClassLeader }} | Rahbar: {{ .ClassTeacher }}</p>
+      <p>Darslar: {{ .LessonCount }}, Jami o‘quvchilar: {{ .TotalStudents }}, Faollar: {{ .TotalActive }}</p>
+    </div>
+  </div>
+  {{ else }}
+  <p>Sinflar yo‘q</p>
+  {{ end }}
+  <a href="/admin/schools" class="btn btn-secondary">Orqaga</a>
+</div>
+</body>
+</html>

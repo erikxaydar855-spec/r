@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <title>Dars jadvali - {{ .Class.ClassName }}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <style>
+    body { background:#f1f5f9; }
+    .sidebar { background:#0f172a; min-height:100vh; padding:20px 0; }
+    .sidebar .nav-link { color:#94a3b8; border-radius:8px; padding:12px 20px; margin:4px 12px; }
+    .sidebar .nav-link:hover { background:#1e293b; color:#fff; }
+    .sidebar .nav-link i { margin-right:12px; }
+    .main-content { padding:30px; }
+    .schedule-card { background:#fff; border-radius:16px; padding:30px; box-shadow:0 4px 20px rgba(0,0,0,0.05); max-width: 700px; }
+    .schedule-row { display: flex; align-items: center; gap:16px; padding:14px 0; border-bottom:1px solid #e2e8f0; }
+    .schedule-row:last-child { border-bottom:none; }
+    .schedule-row .day-name { flex:1; font-weight:600; color:#1e293b; font-size:16px; }
+    .schedule-row input { width:120px; padding:10px 14px; border:2px solid #e2e8f0; border-radius:10px; font-size:15px; text-align:center; }
+    .schedule-row input:focus { outline:none; border-color:#3b82f6; box-shadow:0 0 0 4px rgba(59,130,246,0.12); }
+    .schedule-row .unit { font-size:13px; color:#64748b; }
+    .info-note { background:#eff6ff; color:#1e40af; padding:14px 16px; border-radius:12px; margin-bottom:20px; font-size:14px; line-height:1.6; }
+  </style>
+</head>
+<body>
+<div class="container-fluid p-0">
+  <div class="row g-0">
+    <div class="col-md-3 col-lg-2 sidebar">
+      <div class="text-center text-white py-3">
+        <h4><i class="bi bi-camera-video"></i> ITube</h4>
+        <small class="text-secondary">Admin panel</small>
+      </div>
+      <hr class="border-secondary">
+      <nav class="nav flex-column">
+        <a href="/admin/videos" class="nav-link"><i class="bi bi-collection-play"></i> Videolar</a>
+        <a href="/admin/manage" class="nav-link active"><i class="bi bi-building-gear"></i> Maktab va sinflar</a>
+        <a href="/admin/schools" class="nav-link"><i class="bi bi-building"></i> Maktablar ro‘yxati</a>
+        <a href="/" class="nav-link"><i class="bi bi-globe2"></i> Saytga o‘tish</a>
+        <a href="/logout" class="nav-link"><i class="bi bi-box-arrow-right"></i> Chiqish</a>
+      </nav>
+    </div>
+    <div class="col-md-9 col-lg-10 main-content">
+      <h2><i class="bi bi-calendar-week text-primary"></i> {{ .School.SchoolName }} — {{ .Class.ClassName }} dars jadvali</h2>
+      <p class="text-secondary">Har bir kun uchun darslar soni kiriting. Bu kunlik video ko‘rish foizini hisoblashda ishlatiladi.</p>
+
+      <div class="info-note">
+        <i class="bi bi-info-circle"></i>
+        <strong>Muhim:</strong> Kunlik video ko‘rish foizi = (ko‘rilgan videolar / shu kunning darslar soni) × 100. Ya'ni Dushanba kuni 6 ta dars bo‘lsa, 3 ta video ko‘rilsa — 50% hisoblanadi.
+      </div>
+
+      <div class="schedule-card">
+        <form method="post" action="/admin/manage/schedule/save">
+          <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+          <input type="hidden" name="school_id" value="{{ .School.ID }}">
+          <input type="hidden" name="class_id" value="{{ .Class.ID }}">
+
+          {{ range .Days }}
+          <div class="schedule-row">
+            <span class="day-name">{{ .Name }}</span>
+            <input type="number" name="day_{{ .Num }}" value="{{ .Count }}" min="0" max="10">
+            <span class="unit">dars</span>
+          </div>
+          {{ end }}
+
+          <div style="margin-top:24px; display:flex; gap:10px;">
+            <button type="submit" class="btn btn-primary px-4"><i class="bi bi-check2-circle"></i> Saqlash</button>
+            <a href="/admin/manage?school_id={{ .School.ID }}&class_id={{ .Class.ID }}" class="btn btn-outline-secondary">Bekor qilish</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

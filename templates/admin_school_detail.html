@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ .School.SchoolName }} - batafsil</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <style>
+    body { background:#f1f5f9; }
+    .sidebar { background:#0f172a; min-height:100vh; padding:20px 0; }
+    .sidebar .nav-link { color:#94a3b8; border-radius:8px; padding:12px 20px; margin:4px 12px; }
+    .sidebar .nav-link:hover { background:#1e293b; color:#fff; }
+    .sidebar .nav-link i { margin-right:12px; }
+    .main-content { padding:30px; }
+    .class-section { background:#fff; border-radius:16px; padding:20px; margin-bottom:24px; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
+    .class-header { border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:16px; }
+    .class-header h3 { margin:0; font-weight:700; color:#0f172a; }
+    .class-header small { color:#64748b; }
+    .class-body { display: grid; grid-template-columns: 1fr 280px; gap:20px; }
+    .videos-list { max-height: 500px; overflow-y: auto; padding-right: 8px; }
+    .video-box { background:#f8fafc; border:1px solid #e2e8f0; border-left:4px solid #3b82f6; border-radius:10px; padding:14px 16px; margin-bottom:10px; }
+    .video-box h5 { margin:0 0 8px; font-size:15px; font-weight:700; color:#0f172a; }
+    .video-box .meta { font-size:13px; color:#475569; margin-bottom:6px; }
+    .video-box .meta strong { color:#0f172a; }
+    .percent-bar { height:8px; background:#e2e8f0; border-radius:30px; overflow:hidden; margin-top:8px; }
+    .percent-fill { height:100%; background: linear-gradient(90deg, #3b82f6, #6366f1); border-radius:30px; }
+    .percent-label { display:flex; justify-content:space-between; font-size:12px; color:#64748b; margin-top:4px; }
+    .stats-panel { display: flex; flex-direction: column; gap: 12px; position: sticky; top: 20px; height: fit-content; }
+    .stat-box { border-radius: 14px; padding: 18px; color: white; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .stat-box.daily { background: linear-gradient(135deg, #10b981, #059669); }
+    .stat-box.monthly { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+    .stat-box.yearly { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+    .stat-box .label { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9; margin-bottom: 6px; }
+    .stat-box .value { font-size: 32px; font-weight: 800; line-height: 1; }
+    .stat-box .sub { font-size: 11px; opacity: 0.85; margin-top: 6px; }
+    .stat-box .mini-bar { height:6px; background:rgba(255,255,255,0.25); border-radius:30px; overflow:hidden; margin-top:10px; }
+    .stat-box .mini-fill { height:100%; background:#fff; border-radius:30px; }
+    .no-videos { text-align:center; padding:20px; color:#94a3b8; font-size:14px; }
+    @media (max-width: 900px) {
+      .class-body { grid-template-columns: 1fr; }
+      .stats-panel { position: static; flex-direction: row; flex-wrap: wrap; }
+      .stat-box { flex: 1; min-width: 120px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container-fluid p-0">
+  <div class="row g-0">
+    <div class="col-md-3 col-lg-2 sidebar">
+      <div class="text-center text-white py-3">
+        <h4><i class="bi bi-camera-video"></i> ITube</h4>
+        <small class="text-secondary">Admin panel</small>
+      </div>
+      <hr class="border-secondary">
+      <nav class="nav flex-column">
+        <a href="/admin/videos" class="nav-link"><i class="bi bi-collection-play"></i> Videolar</a>
+        <a href="/admin/manage" class="nav-link"><i class="bi bi-building-gear"></i> Maktab va sinflar</a>
+        <a href="/admin/schools" class="nav-link active"><i class="bi bi-building"></i> Maktablar ro‘yxati</a>
+        <a href="/" class="nav-link"><i class="bi bi-globe2"></i> Saytga o‘tish</a>
+        <a href="/logout" class="nav-link"><i class="bi bi-box-arrow-right"></i> Chiqish</a>
+      </nav>
+    </div>
+    <div class="col-md-9 col-lg-10 main-content">
+      <h2><i class="bi bi-building text-primary"></i> {{ .School.SchoolName }} <small class="text-muted">({{ .School.Region }})</small></h2>
+      <hr>
+
+      {{ range .Classes }}
+      <div class="class-section">
+        <div class="class-header">
+          <h3>{{ .ClassName }}</h3>
+          <small>Sardor: {{ .ClassLeader }} | Rahbar: {{ .ClassTeacher }} | Jami o‘quvchilar: <strong>{{ .TotalStudents }}</strong></small>
+        </div>
+
+        <div class="class-body">
+          <div class="videos-list">
+            {{ if .LessonVideos }}
+              {{ range .LessonVideos }}
+              <div class="video-box">
+                <h5><i class="bi bi-play-circle text-primary"></i> {{ .VideoTitle }}</h5>
+                <div class="meta">
+                  <strong>Fan:</strong> {{ .Subject }} | <strong>{{ .Hour }}-dars</strong>
+                </div>
+                <div class="meta">
+                  <strong>Faol:</strong> {{ .ActiveCount }} / {{ .StudentsTotal }} o‘quvchi
+                </div>
+                <div class="percent-bar">
+                  <div class="percent-fill" style="width:{{ .Percent }}%;"></div>
+                </div>
+                <div class="percent-label">
+                  <span>Faollik darajasi</span>
+                  <span><strong>{{ .Percent }}%</strong></span>
+                </div>
+              </div>
+              {{ end }}
+            {{ else }}
+              <div class="no-videos">
+                <i class="bi bi-info-circle"></i> Bu sinf hali hech qanday video ko‘rmagan.
+              </div>
+            {{ end }}
+          </div>
+
+          <div class="stats-panel">
+            <div class="stat-box daily">
+              <div class="label"><i class="bi bi-calendar-day"></i> Kunlik</div>
+              <div class="value">{{ .DailyPercent }}%</div>
+              <div class="sub">{{ .VideosToday }} / {{ .TodayLessons }} video</div>
+              <div class="mini-bar"><div class="mini-fill" style="width:{{ if gt .DailyPercent 100 }}100{{ else }}{{ .DailyPercent }}{{ end }}%;"></div></div>
+            </div>
+            <div class="stat-box monthly">
+              <div class="label"><i class="bi bi-calendar-month"></i> Oylik</div>
+              <div class="value">{{ .MonthlyPercent }}%</div>
+              <div class="sub">{{ .VideosMonth }} / {{ .MonthlyMax }} video</div>
+              <div class="mini-bar"><div class="mini-fill" style="width:{{ if gt .MonthlyPercent 100 }}100{{ else }}{{ .MonthlyPercent }}{{ end }}%;"></div></div>
+            </div>
+            <div class="stat-box yearly">
+              <div class="label"><i class="bi bi-calendar-range"></i> Yillik</div>
+              <div class="value">{{ .YearlyPercent }}%</div>
+              <div class="sub">{{ .VideosYear }} / {{ .YearlyMax }} video</div>
+              <div class="mini-bar"><div class="mini-fill" style="width:{{ if gt .YearlyPercent 100 }}100{{ else }}{{ .YearlyPercent }}{{ end }}%;"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {{ else }}
+      <p>Hali sinflar mavjud emas.</p>
+      {{ end }}
+
+      <a href="/admin/schools" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Orqaga</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>
