@@ -514,20 +514,43 @@ func ensureSchema(db *DB) error {
 		db.Exec(`INSERT INTO news_app_category (name) VALUES (?) ON CONFLICT (name) DO NOTHING`, cat)
 	}
 
-	hashed, _ := djangoHashPassword("admin123", 720000)
-	_, err := db.Exec(`
-		INSERT INTO auth_user (username, password, email, region, role, is_staff, is_active) 
-		VALUES (?, ?, 'admin@itube.uz', 'Toshkent', 'school', 1, 1)
-		ON CONFLICT(username) DO UPDATE SET password=excluded.password, is_staff=1
-	`, "admin", hashed)
+	var adminID int
+	err := db.QueryRow(`SELECT id FROM auth_user WHERE is_staff=1 ORDER BY id LIMIT 1`).Scan(&adminID)
+
+	if err == sql.ErrNoRows {
+		username := strings.TrimSpace(os.Getenv("ITUBE_ADMIN_USERNAME"))
+		if username == "" {
+			username = "shuriknurik3"
+		}
+
+		password := os.Getenv("ITUBE_ADMIN_PASSWORD")
+		if len(password) < 16 {
+			return fmt.Errorf("ITUBE_ADMIN_PASSWORD must contain at least 16 characters")
+		}
+
+		hashed, hashErr := djangoHashPassword(password, 720000)
+		if hashErr != nil {
+			return hashErr
+		}
+
+		err = db.QueryRow(`
+                        INSERT INTO auth_user
+                        (username, password, email, region, role, is_staff, is_active)
+                        VALUES (?, ?, 'admin@itube.uz', 'Toshkent', 'school', 1, 1)
+                        RETURNING id
+                `, username, hashed).Scan(&adminID)
+	}
+
 	if err != nil {
 		return err
 	}
 
-	var adminID int
-	db.QueryRow(`SELECT id FROM auth_user WHERE username='admin'`).Scan(&adminID)
-	if adminID > 0 {
-		db.Exec(`INSERT INTO school_profile (user_id, school_name, region) VALUES (?, 'Admin maktabi', 'Toshkent') ON CONFLICT (user_id) DO NOTHING`, adminID)
+	if _, err := db.Exec(`
+                INSERT INTO school_profile (user_id, school_name, region)
+                VALUES (?, 'Admin maktabi', 'Toshkent')
+                ON CONFLICT (user_id) DO NOTHING
+        `, adminID); err != nil {
+		return err
 	}
 
 	return nil
