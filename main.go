@@ -1104,7 +1104,7 @@ func (a *App) searchPublishedVideos(query string, limit int) ([]Video, error) {
 	rows, err := a.db.Query(`
 		SELECT v.id, v.title, v.slug, v.body, v.video_url, v.image, v.status, v.created_time, c.id, c.name
 		FROM news_app_new_video v JOIN news_app_category c ON c.id=v.category_id
-		WHERE v.status='PB' AND (v.title LIKE ? OR v.body LIKE ? OR c.name LIKE ?)
+		WHERE v.status='PB' AND (v.title ILIKE ? OR v.body ILIKE ? OR c.name ILIKE ?)
 		ORDER BY v.created_time DESC LIMIT ?
 	`, like, like, like, limit)
 	if err != nil {

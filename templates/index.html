@@ -239,13 +239,17 @@
     });
   }
 
+  let latestSearchRequest = 0;
+  const initialGridHTML = document.getElementById('videoGridContainer').innerHTML;
   function performSearch(query) {
+    const requestID = ++latestSearchRequest;
     const gridContainer = document.getElementById('videoGridContainer');
-    if (!query.trim()) { window.location.reload(); return; }
+    if (!query.trim()) { gridContainer.innerHTML = initialGridHTML; return; }
     gridContainer.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Qidirilmoqda…</div>';
     fetch('/search-api?q=' + encodeURIComponent(query))
       .then(res => res.json())
       .then(data => {
+        if (requestID !== latestSearchRequest) return;
         if (data.results && data.results.length > 0) {
           let html = '';
           data.results.forEach(v => {
@@ -269,6 +273,7 @@
         }
       })
       .catch(() => {
+        if (requestID !== latestSearchRequest) return;
         gridContainer.innerHTML = '<div class="no-results">Xatolik yuz berdi</div>';
       });
   }
@@ -278,6 +283,11 @@
     const searchBtn = document.getElementById('searchBtn');
 
     searchBtn.addEventListener('click', function() { performSearch(searchInput.value); });
+    let searchTimer;
+    searchInput.addEventListener('input', function() {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => performSearch(searchInput.value), 250);
+    });
     searchInput.addEventListener('keypress', function(e) {
       if (e.key === 'Enter') { e.preventDefault(); searchBtn.click(); }
     });
