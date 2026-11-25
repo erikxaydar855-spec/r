@@ -553,7 +553,108 @@ func ensureSchema(db *DB) error {
 		return err
 	}
 
+	if err := ensureLegacyClassAccounts(db); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+// Eski class_teacher loginlari sinf ID loginiga o'zgartiriladi.
+// Ma'lumotlar saqlanadi; eski bitta-sinflik hisobning ID si o'zgarmaydi.
+func ensureLegacyClassAccounts(db *DB) error {
+	rows, err := db.Query(`SELECT id,class_teacher FROM class_profile ORDER BY id`)
+	if err != nil {
+		return err
+	}
+	type row struct {
+		ID      int
+		Teacher string
+	}
+	var classes []row
+	for rows.Next() {
+		var c row
+		if err := rows.Scan(&c.ID, &c.Teacher); err != nil {
+			rows.Close()
+			return err
+		}
+		classes = append(classes, c)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	rows.Close()
+	for _, c := range classes {
+		username := fmt.Sprintf("class_%d", c.ID)
+		var existing int
+		err = db.QueryRow(`SELECT id FROM auth_user WHERE username=?`, username).Scan(&existing)
+		if err == nil {
+			continue
+		}
+		if err != sql.ErrNoRows {
+			return err
+		}
+		var oldID int
+		var storedHash string
+		err = db.QueryRow(`SELECT id,password FROM auth_user WHERE username=? AND role='class'`, c.Teacher).Scan(&oldID, &storedHash)
+		if err == sql.ErrNoRows {
+			log.Printf("Sinf %d uchun yangi parol administrator tomonidan belgilanishi kerak", c.ID)
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		var n int
+		if err = db.QueryRow(`SELECT COUNT(*) FROM class_profile WHERE class_teacher=?`, c.Teacher).Scan(&n); err != nil {
+			return err
+		}
+		if n == 1 {
+			_, err = db.Exec(`UPDATE auth_user SET username=? WHERE id=? AND role='class'`, username, oldID)
+		} else {
+			_, err = db.Exec(`INSERT INTO auth_user(username,password,email,region,role,is_staff,is_active)
+                VALUES(?,?,'','','class',0,1) ON CONFLICT(username) DO NOTHING`, username, storedHash)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Maktab tanlangach, faqat shu maktab sinflarini ko'rsatamiz.
+func (a *App) apiClassesHandler(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.Atoi(r.URL.Query().Get("school_id"))
+	if err != nil || id < 1 {
+		http.Error(w, "Maktab ID noto'g'ri", 400)
+		return
+	}
+	rows, err := a.db.Query(`SELECT id,class_name FROM class_profile WHERE school_id=? ORDER BY class_number,class_letter`, id)
+	if err != nil {
+		http.Error(w, "Database xatosi", 500)
+		return
+	}
+	defer rows.Close()
+	type classOpt struct {
+		ID   int    `json:"id"`
+		Name string `json:"name"`
+	}
+	results := make([]classOpt, 0)
+	for rows.Next() {
+		var item classOpt
+		if err := rows.Scan(&item.ID, &item.Name); err != nil {
+			http.Error(w, "Database xatosi", 500)
+			return
+		}
+		results = append(results, item)
+	}
+	if err := rows.Err(); err != nil {
+		http.Error(w, "Database xatosi", 500)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	json.NewEncoder(w).Encode(map[string]any{"results": results})
 }
 
 func (a *App) routes() http.Handler {
@@ -581,6 +682,7 @@ func (a *App) routes() http.Handler {
 	r.Post("/api/lesson", a.lessonStatHandler)
 	r.Post("/api/chat", a.aiChatHandler)
 	r.Get("/api/schools", a.apiSchoolsHandler)
+	r.Get("/api/classes", a.apiClassesHandler)
 	r.Get("/api/class-students", a.apiClassStudentsHandler)
 
 	r.Get("/profile", a.profileHandler)
@@ -890,7 +992,7 @@ func (a *App) authLoginHandler(w http.ResponseWriter, r *http.Request) {
 		SELECT id, username, password, email, region, role, is_staff, is_active
 		FROM auth_user WHERE username=? AND is_active=1
 	`, username).Scan(&user.ID, &user.Username, &user.Password, &user.Email, &user.Region, &role, &isStaff, &user.IsActive)
-	if err != nil || !djangoCheckPassword(user.Password, password) {
+	if err != nil || role == "class" || !djangoCheckPassword(user.Password, password) {
 		a.render(w, r, "auth.html", map[string]any{"Error": "NotoР Р†Р вЂљР’ВgР Р†Р вЂљР’Вri username yoki parol."})
 		return
 	}
@@ -909,96 +1011,70 @@ func (a *App) authLoginHandler(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) schoolLoginHandler(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "bad form", 400)
+		http.Error(w, "Forma xatosi", 400)
 		return
 	}
 	if !a.verifyCSRFToken(r) {
-		http.Error(w, "csrf", 400)
+		http.Error(w, "CSRF xatosi", 400)
 		return
 	}
-	schoolIDStr := strings.TrimSpace(r.FormValue("school_id"))
-	password := strings.TrimSpace(r.FormValue("password"))
-	if schoolIDStr == "" || password == "" {
+	schoolID, e := strconv.Atoi(strings.TrimSpace(r.FormValue("school_id")))
+	classID, ce := strconv.Atoi(strings.TrimSpace(r.FormValue("class_id")))
+	password := r.FormValue("password")
+	if e != nil || schoolID < 1 || password == "" {
 		a.render(w, r, "auth.html", map[string]any{"Error": "Maktabni tanlang va parol kiriting."})
 		return
 	}
-	schoolID, err := strconv.Atoi(schoolIDStr)
-	if err != nil || schoolID == 0 {
-		a.render(w, r, "auth.html", map[string]any{"Error": "Maktabni toР Р†Р вЂљР’ВgР Р†Р вЂљР’Вri tanlang."})
-		return
-	}
-	var schoolUserID int
-	var schoolName string
-	err = a.db.QueryRow(`SELECT user_id, school_name FROM school_profile WHERE id=?`, schoolID).Scan(&schoolUserID, &schoolName)
-	if err != nil {
-		a.render(w, r, "auth.html", map[string]any{"Error": "Maktab topilmadi."})
-		return
-	}
-	var storedHash string
-	hashErr := a.db.QueryRow(`SELECT password FROM auth_user WHERE id=? AND role='school' AND is_active=1 AND is_staff=0`, schoolUserID).Scan(&storedHash)
-	if hashErr == nil && djangoCheckPassword(storedHash, password) {
-		var userID int
-		var username string
-		var isStaff int
-		err = a.db.QueryRow(`SELECT id, username, is_staff FROM auth_user WHERE id=?`, schoolUserID).Scan(&userID, &username, &isStaff)
-		if err != nil {
-			a.render(w, r, "auth.html", map[string]any{"Error": "Maktab akkaunti topilmadi."})
+	var userID int
+	var username, hash, role string
+	if r.FormValue("class_id") != "" { // Sinf uchun tanlangan sinfning hisobini tekshiramiz.
+		if ce != nil || classID < 1 {
+			a.render(w, r, "auth.html", map[string]any{"Error": "Sinf noto'g'ri tanlangan."})
 			return
 		}
-		session, _ := a.store.Get(r, "itube_session")
-		session.Values["user_id"] = userID
-		session.Values["username"] = username
-		session.Values["is_staff"] = isStaff == 1
-		session.Values["role"] = "school"
-		session.Save(r, w)
-		http.Redirect(w, r, "/myclasses", http.StatusSeeOther)
-		return
-	}
-
-	rows, err := a.db.Query(`SELECT id, class_name, class_teacher FROM class_profile WHERE school_id=?`, schoolID)
-	if err != nil {
-		a.render(w, r, "auth.html", map[string]any{"Error": "Sinflar topilmadi."})
-		return
-	}
-	defer rows.Close()
-	var matchedTeacher string
-	var matchedClassID int
-	for rows.Next() {
-		var cid int
-		var cname, cteacher string
-		if err := rows.Scan(&cid, &cname, &cteacher); err != nil {
-			continue
+		err := a.db.QueryRow(`
+            SELECT u.id, u.username, u.password, u.role
+            FROM class_profile c JOIN auth_user u ON u.username=('class_' || c.id::text)
+            WHERE c.id=? AND c.school_id=? AND u.role='class'
+              AND u.is_staff=0 AND u.is_active=1
+        `, classID, schoolID).Scan(&userID, &username, &hash, &role)
+		if err != nil || !djangoCheckPassword(hash, password) {
+			a.render(w, r, "auth.html", map[string]any{"Error": "Sinf paroli noto'g'ri."})
+			return
 		}
-		var storedHash string
-		hashErr := a.db.QueryRow(`SELECT password FROM auth_user WHERE username=? AND role='class' AND is_active=1 AND is_staff=0`, cteacher).Scan(&storedHash)
-		if hashErr == nil && djangoCheckPassword(storedHash, password) {
-			matchedTeacher = cteacher
-			matchedClassID = cid
-			break
+	} else { // Sinf tanlanmagan bo'lsa, maktab hisobiga kiriladi.
+		err := a.db.QueryRow(`
+            SELECT u.id, u.username, u.password, u.role
+            FROM school_profile s JOIN auth_user u ON u.id=s.user_id
+            WHERE s.id=? AND u.role='school' AND u.is_staff=0 AND u.is_active=1
+        `, schoolID).Scan(&userID, &username, &hash, &role)
+		if err != nil || !djangoCheckPassword(hash, password) {
+			a.render(w, r, "auth.html", map[string]any{"Error": "Maktab paroli noto'g'ri."})
+			return
 		}
 	}
-	rows.Close()
-
-	if matchedTeacher == "" {
-		a.render(w, r, "auth.html", map[string]any{"Error": "Parol notoР Р†Р вЂљР’ВgР Р†Р вЂљР’Вri."})
-		return
-	}
-	var userID int
-	var username string
-	var isStaff int
-	err = a.db.QueryRow(`SELECT id, username, is_staff FROM auth_user WHERE username=?`, matchedTeacher).Scan(&userID, &username, &isStaff)
+	session, err := a.store.Get(r, "itube_session")
 	if err != nil {
-		a.render(w, r, "auth.html", map[string]any{"Error": "Sinf akkaunti topilmadi."})
+		http.Error(w, "Sessiya xatosi", 500)
 		return
 	}
-	session, _ := a.store.Get(r, "itube_session")
 	session.Values["user_id"] = userID
 	session.Values["username"] = username
-	session.Values["is_staff"] = isStaff == 1
-	session.Values["role"] = "class"
-	session.Values["class_id"] = matchedClassID
-	session.Save(r, w)
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	session.Values["role"] = role
+	session.Values["is_staff"] = false
+	delete(session.Values, "class_id")
+	if role == "class" {
+		session.Values["class_id"] = classID
+	}
+	if err := session.Save(r, w); err != nil {
+		http.Error(w, "Sessiyani saqlashda xato", 500)
+		return
+	}
+	if role == "class" {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+	} else {
+		http.Redirect(w, r, "/myclasses", http.StatusSeeOther)
+	}
 }
 
 func (a *App) logoutHandler(w http.ResponseWriter, r *http.Request) {
@@ -1074,7 +1150,7 @@ func (a *App) apiClassStudentsHandler(w http.ResponseWriter, r *http.Request) {
 					var found int
 					err := a.db.QueryRow(`
                         SELECT 1 FROM class_profile c
-                        JOIN auth_user u ON u.username=c.class_teacher
+                        JOIN auth_user u ON u.username=('class_' || c.id::text) AND u.role='class'
                         WHERE c.id=? AND u.id=? AND u.is_active=1
                     `, classID, userID).Scan(&found)
 					allowed = err == nil
@@ -1477,7 +1553,7 @@ func (a *App) profileHandler(w http.ResponseWriter, r *http.Request) {
 			FROM class_profile cp
 			JOIN school_profile sp ON sp.id = cp.school_id
 			JOIN auth_user u ON u.id = sp.user_id
-			WHERE cp.class_teacher = (SELECT username FROM auth_user WHERE id=?)
+			WHERE ('class_' || cp.id::text) = (SELECT username FROM auth_user WHERE id=? AND role='class')
 		`, userID).Scan(&className, &classNum, &classLetter, &classLeader)
 		schoolOrClass = className
 	}
@@ -1572,7 +1648,7 @@ func (a *App) updateClassHandler(w http.ResponseWriter, r *http.Request) {
 	_, err := a.db.Exec(`
 		UPDATE class_profile
 		SET class_number=?, class_letter=?, class_leader=?
-		WHERE class_teacher = (SELECT username FROM auth_user WHERE id=?)
+		WHERE ('class_' || id::text) = (SELECT username FROM auth_user WHERE id=? AND role='class')
 	`, payload.ClassNumber, payload.ClassLetter, payload.ClassLeader, userID)
 	if err != nil {
 		writeJSON(w, map[string]any{"status": "error", "error": err.Error()})
@@ -1719,12 +1795,11 @@ func (a *App) adminManageHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	type ClassItem struct {
-		ID            int
-		ClassName     string
-		ClassLeader   string
-		ClassTeacher  string
-		ClassPassword string
-		StudentCount  int
+		ID           int
+		ClassName    string
+		ClassLeader  string
+		ClassTeacher string
+		StudentCount int
 	}
 	type StudentItem struct {
 		ID        int
@@ -1735,12 +1810,11 @@ func (a *App) adminManageHandler(w http.ResponseWriter, r *http.Request) {
 		Origin    string
 	}
 	type SchoolItem struct {
-		ID             int
-		SchoolName     string
-		Region         string
-		SchoolPassword string
-		ClassCount     int
-		Classes        []ClassItem
+		ID         int
+		SchoolName string
+		Region     string
+		ClassCount int
+		Classes    []ClassItem
 	}
 
 	rows, err := a.db.Query(`
@@ -1759,7 +1833,6 @@ func (a *App) adminManageHandler(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var s SchoolItem
 		rows.Scan(&s.ID, &s.SchoolName, &s.Region)
-		s.SchoolPassword = extractNumber(s.SchoolName) + "maktab"
 		a.db.QueryRow(`SELECT COUNT(*) FROM class_profile WHERE school_id=?`, s.ID).Scan(&s.ClassCount)
 		schools = append(schools, s)
 	}
@@ -1784,7 +1857,6 @@ func (a *App) adminManageHandler(w http.ResponseWriter, r *http.Request) {
 					for classRows.Next() {
 						var c ClassItem
 						classRows.Scan(&c.ID, &c.ClassName, &c.ClassLeader, &c.ClassTeacher)
-						c.ClassPassword = c.ClassName + "sinf"
 						a.db.QueryRow(`SELECT COUNT(*) FROM students WHERE class_id=?`, c.ID).Scan(&c.StudentCount)
 						schools[i].Classes = append(schools[i].Classes, c)
 					}
@@ -1842,25 +1914,53 @@ func (a *App) adminAddSchoolHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/admin/manage", http.StatusSeeOther)
 		return
 	}
-	var count int
-	a.db.QueryRow(`SELECT COUNT(*) FROM auth_user WHERE username=?`, schoolName).Scan(&count)
-	if count > 0 {
-		http.Redirect(w, r, "/admin/manage", http.StatusSeeOther)
+	plainPassword := r.FormValue("school_password")
+	if len([]rune(plainPassword)) < 12 {
+		http.Error(w, "Parol kamida 12 belgidan iborat bo'lishi kerak", 400)
 		return
 	}
-	plainPassword := extractNumber(schoolName) + "maktab"
-	hashed, _ := djangoHashPassword(plainPassword, 720000)
+
+	hashed, err := djangoHashPassword(plainPassword, 720000)
+	if err != nil {
+		http.Error(w, "Parol xatosi", 500)
+		return
+	}
+
+	tx, err := a.db.DB.BeginTx(r.Context(), nil)
+	if err != nil {
+		http.Error(w, "Database xatosi", 500)
+		return
+	}
+	defer tx.Rollback()
+
 	var userID int
-	insertErr := a.db.QueryRow(`
-INSERT INTO auth_user (username, password, email, region, role, is_staff, is_active)
-VALUES (?, ?, '', ?, 'school', 0, 1)
-RETURNING id
-`, schoolName, hashed, region).Scan(&userID)
-	if insertErr != nil {
-		http.Error(w, insertErr.Error(), 500)
+	err = tx.QueryRow(`
+        INSERT INTO auth_user
+        (username, password, email, region, role, is_staff, is_active)
+        VALUES ($1, $2, '', $3, 'school', 0, 1)
+        RETURNING id
+    `, schoolName, hashed, region).Scan(&userID)
+
+	if err != nil {
+		http.Error(w, "Maktab logini mavjud yoki saqlashda xatolik", 409)
 		return
 	}
-	a.db.Exec(`INSERT INTO school_profile (user_id, school_name, region) VALUES (?, ?, ?)`, userID, schoolName, region)
+
+	_, err = tx.Exec(`
+        INSERT INTO school_profile (user_id, school_name, region)
+        VALUES ($1, $2, $3)
+    `, userID, schoolName, region)
+
+	if err != nil {
+		http.Error(w, "Maktab profilini yaratib bo'lmadi", 500)
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		http.Error(w, "Saqlashda xatolik", 500)
+		return
+	}
+
 	http.Redirect(w, r, "/admin/manage", http.StatusSeeOther)
 }
 
@@ -1869,37 +1969,61 @@ func (a *App) adminAddClassHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "Forma xatosi", 400)
+		return
+	}
 	if !a.verifyCSRFToken(r) {
-		http.Error(w, "csrf", 400)
+		http.Error(w, "CSRF xatosi", 400)
 		return
 	}
 	schoolIDStr := r.FormValue("school_id")
-	schoolID, _ := strconv.Atoi(schoolIDStr)
+	schoolID, err := strconv.Atoi(schoolIDStr)
 	classNumber := strings.TrimSpace(r.FormValue("class_number"))
 	classLetter := strings.ToUpper(strings.TrimSpace(r.FormValue("class_letter")))
 	classLeader := strings.TrimSpace(r.FormValue("class_leader"))
 	classTeacher := strings.TrimSpace(r.FormValue("class_teacher"))
-	if schoolID == 0 || classNumber == "" || classLetter == "" || classLeader == "" || classTeacher == "" {
-		http.Redirect(w, r, "/admin/manage", http.StatusSeeOther)
+	plainPassword := r.FormValue("class_password")
+	if err != nil || schoolID < 1 || classNumber == "" || classLetter == "" || classLeader == "" || classTeacher == "" {
+		http.Error(w, "Sinf ma'lumotlari to'liq emas", 400)
 		return
 	}
-	var userExists int
-	a.db.QueryRow(`SELECT COUNT(*) FROM auth_user WHERE username=?`, classTeacher).Scan(&userExists)
-	if userExists == 0 {
-		plainPassword := classNumber + classLetter + "sinf"
-		hashed, _ := djangoHashPassword(plainPassword, 720000)
-		a.db.Exec(`
-			INSERT INTO auth_user (username, password, email, region, role, is_staff, is_active)
-			VALUES (?, ?, '', '', 'class', 0, 1)
-		`, classTeacher, hashed)
+	if len([]rune(plainPassword)) < 12 {
+		http.Error(w, "Parol kamida 12 belgili bo'lsin", 400)
+		return
 	}
-	_, err := a.db.Exec(`
-		INSERT INTO class_profile (school_id, class_number, class_letter, class_leader, class_teacher)
-		VALUES (?, ?, ?, ?, ?)
-	`, schoolID, classNumber, classLetter, classLeader, classTeacher)
+	hash, err := djangoHashPassword(plainPassword, 720000)
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		http.Error(w, "Parolni xeshlashda xato", 500)
+		return
+	}
+	tx, err := a.db.DB.BeginTx(r.Context(), nil)
+	if err != nil {
+		http.Error(w, "Database xatosi", 500)
+		return
+	}
+	defer tx.Rollback()
+	var classID int
+	err = tx.QueryRow(`
+        INSERT INTO class_profile (school_id,class_number,class_letter,class_leader,class_teacher)
+        VALUES ($1,$2,$3,$4,$5) RETURNING id
+    `, schoolID, classNumber, classLetter, classLeader, classTeacher).Scan(&classID)
+	if err != nil {
+		http.Error(w, "Sinf mavjud yoki maktab noto'g'ri", 409)
+		return
+	}
+	// ITUBE_CLASS_ACCOUNTS_V2: O'qituvchi ismi login sifatida ishlatilmaydi.
+	classUsername := fmt.Sprintf("class_%d", classID)
+	_, err = tx.Exec(`
+        INSERT INTO auth_user (username,password,email,region,role,is_staff,is_active)
+        VALUES ($1,$2,'','','class',0,1)
+    `, classUsername, hash)
+	if err != nil {
+		http.Error(w, "Sinf hisobini saqlashda xato", 409)
+		return
+	}
+	if err := tx.Commit(); err != nil {
+		http.Error(w, "Saqlashda xato", 500)
 		return
 	}
 	http.Redirect(w, r, "/admin/manage?school_id="+schoolIDStr, http.StatusSeeOther)

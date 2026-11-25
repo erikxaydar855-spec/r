@@ -91,6 +91,12 @@
                     </div>
                     <div class="card-body">
                         <form method="post" action="/admin/manage/school/add" class="row g-3">
+<div class="col-md-4">
+    <label class="form-label">Maktab uchun yangi parol</label>
+    <input type="password" name="school_password"
+           class="form-control" minlength="12"
+           autocomplete="new-password" required>
+</div>
                             <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
                             <div class="col-md-5">
                                 <label class="form-label">Maktab nomi</label>
@@ -135,7 +141,7 @@
                                     <th>#</th>
                                     <th>Maktab</th>
                                     <th>Viloyat</th>
-                                    <th>Parol</th>
+
                                     <th>Sinflar</th>
                                     <th></th>
                                 </tr>
@@ -146,7 +152,7 @@
                                     <td>{{ .ID }}</td>
                                     <td><strong>{{ .SchoolName }}</strong></td>
                                     <td>{{ .Region }}</td>
-                                    <td><span class="badge-pwd">{{ .SchoolPassword }}</span></td>
+
                                     <td>{{ .ClassCount }}</td>
                                     <td>
                                         <a href="/admin/manage?school_id={{ .ID }}"
@@ -161,7 +167,7 @@
                                 </tr>
                                 {{ else }}
                                 <tr>
-                                    <td colspan="6" class="text-center py-3 text-secondary">Hali maktablar yo‘q</td>
+                                    <td colspan="5" class="text-center py-3 text-secondary">Hali maktablar yo‘q</td>
                                 </tr>
                                 {{ end }}
                             </tbody>
@@ -177,6 +183,12 @@
                     </div>
                     <div class="card-body">
                         <form method="post" action="/admin/manage/class/add" class="row g-3">
+<div class="col-md-4">
+    <label class="form-label">Sinf uchun yangi parol</label>
+    <input type="password" name="class_password"
+           class="form-control" minlength="12"
+           autocomplete="new-password" required>
+</div>
                             <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
                             <input type="hidden" name="school_id" value="{{ .SelectedSchool.ID }}">
                             <div class="col-md-2"><label class="form-label">Sinf raqami</label><input type="number"
@@ -207,7 +219,7 @@
                                     <th>Sinf</th>
                                     <th>Rahbar</th>
                                     <th>Sardor</th>
-                                    <th>Parol</th>
+
                                     <th>O‘quvchilar</th>
                                     <th>Harakatlar</th>
                                 </tr>
@@ -219,7 +231,7 @@
                                     <td><strong>{{ .ClassName }}</strong></td>
                                     <td>{{ .ClassTeacher }}</td>
                                     <td>{{ .ClassLeader }}</td>
-                                    <td><span class="badge-pwd">{{ .ClassPassword }}</span></td>
+
                                     <td><span class="badge bg-info">{{ .StudentCount }}</span></td>
                                     <td>
                                         <a href="/admin/manage/schedule?school_id={{ $.SelectedSchool.ID }}&class_id={{ .ID }}"
@@ -236,7 +248,7 @@
                                 </tr>
                                 {{ else }}
                                 <tr>
-                                    <td colspan="7" class="text-center py-3 text-secondary">Hali sinflar yo‘q</td>
+                                    <td colspan="6" class="text-center py-3 text-secondary">Hali sinflar yo‘q</td>
                                 </tr>
                                 {{ end }}
                             </tbody>

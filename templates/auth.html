@@ -108,9 +108,230 @@
       .tabs button { font-size: 13px; padding: 9px 8px; }
       .tabs button i { display: none; }
     }
-  </style>
+  /* ITUBE AUTH PREMIUM LAYOUT V1 */
+body {
+  display: block;
+  padding: 0;
+  min-height: 100vh;
+  background: radial-gradient(ellipse 55% 45% at 5% 10%,rgba(51,106,234,.20),transparent 75%),
+              radial-gradient(ellipse 45% 55% at 98% 94%,rgba(14,165,233,.13),transparent 75%),
+              linear-gradient(135deg,#071226 0%,#101e3b 52%,#15294b 100%);
+}
+.itube-layout {
+  min-height: 100vh;
+  width: min(1500px,100%);
+  margin: 0 auto;
+  padding: 36px clamp(18px,3vw,48px);
+  display: grid;
+  grid-template-columns: minmax(220px,290px) minmax(340px,475px) minmax(220px,290px);
+  align-items: center;
+  justify-content: center;
+  column-gap: clamp(18px,3vw,42px);
+  row-gap: 20px;
+}
+.itube-layout > .container {
+  width: 100%; max-width: none;
+  padding: 36px clamp(23px,3vw,39px);
+  border: 1px solid rgba(255,255,255,.75);
+  border-radius: 28px;
+  background: #fff;
+  box-shadow: 0 30px 90px rgba(0,0,0,.28), 0 6px 22px rgba(15,23,42,.13);
+}
+.itube-layout .brand i { color:#2563eb; }
+.itube-layout .tabs { gap: 8px; padding: 5px; background:#f1f5ff; border:0; border-radius: 16px; }
+.itube-layout .tabs button { border-radius:12px; min-height:43px; }
+.itube-layout .tabs button.active { box-shadow:0 7px 19px rgba(37,99,235,.25); }
+.itube-layout .form-group { margin-bottom: 17px; }
+.itube-layout .form-group input, .itube-layout .form-group select {
+  min-height:52px; border:1.5px solid #dbe4f1; border-radius:14px;
+  background:#f8faff; transition:border-color .2s,background .2s,box-shadow .2s;
+}
+.itube-layout .form-group input:focus, .itube-layout .form-group select:focus {
+  border-color:#3b82f6; background:#fff; box-shadow:0 0 0 4px rgba(59,130,246,.10);
+}
+.itube-layout .btn-primary {
+  border-radius:14px; min-height:52px; letter-spacing:.01em;
+  background:linear-gradient(110deg,#4387fb,#2259e5);
+  box-shadow:0 12px 25px rgba(37,99,235,.24);
+}
+.itube-side { color:#eff6ff; width:100%; }
+.itube-side .itube-side-card {
+  border:1px solid rgba(255,255,255,.15);
+  background:rgba(255,255,255,.075);
+  box-shadow:0 15px 35px rgba(4,12,30,.17);
+  border-radius:24px;
+  padding:clamp(20px,2.1vw,29px);
+  backdrop-filter:blur(16px);
+}
+.itube-side-heading { display:flex; align-items:center; gap:12px; margin-bottom:17px; }
+.itube-side-icon {
+  display:grid; place-items:center; flex:none;
+  height:46px; width:46px; border-radius:14px;
+  background:rgba(82,149,255,.23); color:#bfdbfe; font-size:20px;
+}
+.itube-side h2 { font-size:19px; line-height:1.3; margin:0; color:#fff; font-weight:800; }
+.itube-side p { color:#c6d4e8; line-height:1.6; font-size:13px; margin:0 0 14px; }
+.itube-side ol { list-style:none; counter-reset:step; margin:0; padding:0; }
+.itube-side li {
+  counter-increment:step; display:flex; align-items:flex-start; gap:11px;
+  color:#e9f1ff; font-size:13.5px; line-height:1.55; margin:0 0 14px;
+}
+.itube-side li::before {
+  content:counter(step); flex:0 0 27px; width:27px; height:27px;
+  display:grid; place-items:center; border-radius:9px;
+  color:#fff; background:rgba(93,160,255,.25); font-weight:700;
+}
+.itube-side li:last-child { margin-bottom:0; }
+.itube-side-tip {
+  margin-top:16px; padding:12px 14px; border-radius:14px;
+  color:#d9e9ff; background:rgba(37,99,235,.18);
+  line-height:1.55; font-size:12.5px;
+}
+@media (max-width:1150px) {
+  .itube-layout { grid-template-columns:minmax(0,570px); padding:26px 18px; row-gap:18px; }
+  .itube-layout > .container { grid-row:1; }
+  .itube-side--school { grid-row:2; }
+  .itube-side--class { grid-row:3; }
+}
+@media (max-width:480px) {
+  .itube-layout { padding:14px 12px 26px; }
+  .itube-layout > .container { padding:26px 20px; border-radius:22px; }
+  .itube-side .itube-side-card { border-radius:18px; padding:20px; }
+  .itube-side h2 { font-size:17px; }
+}
+  /* ITUBE AUTH GLASS V2 вЂ” frosted form, clear labels, subtle motion */
+:root { color-scheme: light; }
+body {
+  position:relative;
+  background:
+    radial-gradient(circle at 15% 10%, rgba(67,139,253,.37) 0, transparent 28%),
+    radial-gradient(circle at 88% 88%, rgba(41,205,219,.20) 0, transparent 30%),
+    radial-gradient(circle at 55% 50%, rgba(118,78,255,.11) 0, transparent 42%),
+    linear-gradient(135deg,#060e23 0%,#0a1b37 52%,#102c4d 100%);
+  background-attachment: fixed;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+.itube-layout > .container {
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+  background:rgba(244,249,255,.79) !important;
+  border:1px solid rgba(255,255,255,.76) !important;
+  border-radius:30px;
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  backdrop-filter: blur(24px) saturate(160%);
+  box-shadow:0 30px 80px rgba(0,0,0,.30),inset 0 1px 0 rgba(255,255,255,.8),0 0 65px rgba(78,143,244,.12);
+}
+.itube-layout > .container::before {
+  content:""; position:absolute; pointer-events:none;
+  top:-100px; right:-120px; width:260px; height:260px; border-radius:50%;
+  background:radial-gradient(circle,rgba(84,158,255,.19),transparent 70%);
+  z-index:-1;
+}
+.itube-layout h1, .itube-layout .title { color:#0c1b36; letter-spacing:-.035em; }
+.itube-layout .tabs {
+  display:flex; gap:6px;
+  padding:5px; background:rgba(229,238,255,.72) !important;
+  border:1px solid rgba(255,255,255,.68) !important;
+  border-radius:16px;
+  box-shadow:inset 0 2px 7px rgba(45,72,110,.05);
+}
+.itube-layout .tabs button {
+  border-radius:12px; transition:transform .18s ease,box-shadow .18s ease,background .18s ease;
+}
+.itube-layout .tabs button.active {
+  background:linear-gradient(115deg,#4088ff,#235fe9) !important;
+  box-shadow:0 8px 20px rgba(46,110,236,.25) !important;
+  color:#fff !important;
+}
+.itube-layout .form-group label, .itube-layout label {
+  color:#213757; font-weight:650;
+}
+.itube-layout .form-group input,
+.itube-layout .form-group select,
+.itube-layout input:not([type="hidden"]),
+.itube-layout select {
+  box-sizing:border-box; width:100%; min-height:53px;
+  border:1px solid rgba(159,183,222,.54) !important;
+  border-radius:14px !important;
+  background:rgba(255,255,255,.68) !important;
+  color:#14233c !important;
+  box-shadow:inset 0 1px 1px rgba(255,255,255,.9), 0 4px 12px rgba(42,74,124,.045);
+  -webkit-backdrop-filter:blur(9px); backdrop-filter:blur(9px);
+  transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease;
+}
+.itube-layout .form-group input:focus,
+.itube-layout .form-group select:focus,
+.itube-layout input:not([type="hidden"]):focus,
+.itube-layout select:focus {
+  background:rgba(255,255,255,.95) !important;
+  border-color:#468bfb !important;
+  box-shadow:0 0 0 4px rgba(58,126,239,.16),0 10px 22px rgba(45,102,200,.08) !important;
+  outline:0;
+}
+.itube-layout input::placeholder { color:#8799b7; }
+.itube-layout input:disabled,
+.itube-layout select:disabled { background:rgba(233,239,248,.52) !important; color:#64748b !important; }
+.itube-layout .btn-primary,
+.itube-layout button[type="submit"] {
+  width:100%; min-height:54px;
+  border:1px solid rgba(255,255,255,.16) !important;
+  border-radius:15px !important;
+  background:linear-gradient(115deg,#4589ff 0%,#2259df 100%) !important;
+  color:white !important; font-weight:750;
+  box-shadow:0 13px 27px rgba(24,87,207,.26),inset 0 1px 0 rgba(255,255,255,.18);
+  transition:transform .18s ease,box-shadow .18s ease,filter .18s ease;
+}
+.itube-layout .btn-primary:hover,
+.itube-layout button[type="submit"]:hover {
+  transform:translateY(-2px);
+  box-shadow:0 17px 30px rgba(24,87,207,.33);
+  filter:brightness(1.025);
+}
+.itube-layout .btn-primary:active,
+.itube-layout button[type="submit"]:active { transform:translateY(0); }
+.itube-side .itube-side-card {
+  background:rgba(224,238,255,.09) !important;
+  border:1px solid rgba(205,232,255,.20) !important;
+  -webkit-backdrop-filter:blur(22px) saturate(135%);
+  backdrop-filter:blur(22px) saturate(135%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 20px 40px rgba(0,0,0,.14);
+}
+.itube-side .itube-side-card:hover { border-color:rgba(212,237,255,.30) !important; }
+.itube-side h2 { color:#fff; }
+.itube-side p,.itube-side li { color:#e1edff; }
+.itube-side .itube-side-icon { background:rgba(88,154,255,.24); }
+@supports not ((-webkit-backdrop-filter:blur(1px)) or (backdrop-filter:blur(1px))) {
+  .itube-layout > .container { background:#f4f8ff !important; }
+  .itube-side .itube-side-card { background:#173256 !important; }
+}
+@media (prefers-reduced-motion:reduce) {
+  .itube-layout *, .itube-layout *::before, .itube-layout *::after { transition:none !important; }
+}
+@media (max-width:480px) {
+  .itube-layout > .container { border-radius:22px; }
+  .itube-layout .form-group input, .itube-layout .form-group select { min-height:50px; }
+}
+</style>
 </head>
 <body>
+<div class="itube-layout">
+  <aside class="itube-side itube-side--school" aria-label="Maktab kabinetiga kirish yo'riqnomasi">
+    <section class="itube-side-card">
+      <div class="itube-side-heading">
+        <span class="itube-side-icon"><i class="fas fa-school" aria-hidden="true"></i></span>
+        <h2>Maktab kabineti</h2>
+      </div>
+      <p>Maktab ma'lumotlarini boshqarish uchun:</p>
+      <ol>
+        <li>Viloyatingizni tanlang.</li>
+        <li>Maktabingizni tanlang.</li>
+        <li>Sinf maydonini "Maktab hisobiga kirish" holatida qoldiring.</li>
+        <li>Maktab uchun berilgan parolni kiriting.</li>
+      </ol>
+      <div class="itube-side-tip"><i class="fas fa-shield-alt" aria-hidden="true"></i> Parolingizni boshqalarga bermang.</div>
+    </section>
+  </aside>
 <div class="container">
   <div class="brand">
     <i class="fas fa-graduation-cap"></i>
@@ -173,6 +394,13 @@
       </div>
 
       <div class="form-group">
+        <label>🏷️ Sinf (maktab hisobiga kirish uchun tanlamang)</label>
+        <select id="classSelect" name="class_id" disabled>
+          <option value="">— Maktab hisobiga kirish —</option>
+        </select>
+      </div>
+
+      <div class="form-group">
         <label>🔒 Parol</label>
         <input type="password" name="password" placeholder="Maktab yoki sinf paroli" required autocomplete="current-password">
       </div>
@@ -180,16 +408,24 @@
       <button type="submit" class="btn-primary">Kirish →</button>
     </form>
 
-    <div class="info-note">
-      <i class="fas fa-info-circle"></i>
-      <div>
-        <strong>Maktab admini:</strong> parol <code>{maktab raqami}maktab</code><br>
-        <em>Masalan: <code>21maktab</code></em><br><br>
-        <strong>Sinf vakili:</strong> parol <code>{sinf}sinf</code><br>
-        <em>Masalan: <code>9Asinf</code>, <code>1Asinf</code>, <code>3Bsinf</code></em>
-      </div>
-    </div>
   </div>
+</div>
+  <aside class="itube-side itube-side--class" aria-label="Sinf kabinetiga kirish yo'riqnomasi">
+    <section class="itube-side-card">
+      <div class="itube-side-heading">
+        <span class="itube-side-icon"><i class="fas fa-graduation-cap" aria-hidden="true"></i></span>
+        <h2>Sinf kabineti</h2>
+      </div>
+      <p>Sinfingizning darslari va natijalarini ko'rish uchun:</p>
+      <ol>
+        <li>Viloyatingizni tanlang.</li>
+        <li>Maktabingizni tanlang.</li>
+        <li>O'z sinfingizni tanlang (masalan, 6B).</li>
+        <li>Sinf uchun berilgan parolni kiriting.</li>
+      </ol>
+      <div class="itube-side-tip"><i class="fas fa-info-circle" aria-hidden="true"></i> Sinf tanlansa, uning kabineti ochiladi.</div>
+    </section>
+  </aside>
 </div>
 
 <script>
@@ -203,6 +439,7 @@
   (function() {
     const regionSelect = document.getElementById('regionSelect');
     const schoolSelect = document.getElementById('schoolSelect');
+    const classSelect = document.getElementById('classSelect');
     let allSchools = [];
 
     function loadSchools() {
@@ -231,6 +468,8 @@
     regionSelect.addEventListener('change', function() {
       const region = this.value;
       schoolSelect.innerHTML = '';
+      classSelect.innerHTML = '<option value="">— Maktab hisobiga kirish —</option>';
+      classSelect.disabled = true;
       if (!region) {
         schoolSelect.innerHTML = '<option value="">— Avval viloyatni tanlang —</option>';
         schoolSelect.disabled = true;
@@ -245,6 +484,24 @@
         schoolSelect.appendChild(opt);
       });
       schoolSelect.disabled = false;
+    });
+
+    schoolSelect.addEventListener('change', function() {
+      classSelect.innerHTML = '<option value="">— Maktab hisobiga kirish —</option>';
+      classSelect.disabled = true;
+      if (!this.value) return;
+      fetch('/api/classes?school_id='+encodeURIComponent(this.value))
+        .then(res => res.ok ? res.json() : Promise.reject('xato'))
+        .then(data => {
+          (data.results || []).forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.textContent = c.name;
+            classSelect.appendChild(opt);
+          });
+          classSelect.disabled = false;
+        })
+        .catch(() => { classSelect.innerHTML = '<option value="">Sinflarni yuklab bo‘lmadi</option>'; });
     });
 
     loadSchools();
