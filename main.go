@@ -1038,6 +1038,54 @@ func (a *App) apiSchoolsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) apiClassStudentsHandler(w http.ResponseWriter, r *http.Request) {
+	// API_CLASS_STUDENTS_ACCESS_CHECK
+	if !a.currentUserIsStaff(r) {
+		userID, loggedIn := a.currentUserID(r)
+		if !loggedIn {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		classID, err := strconv.Atoi(r.URL.Query().Get("class_id"))
+		if err != nil || classID <= 0 {
+			http.Error(w, "Invalid class ID", http.StatusBadRequest)
+			return
+		}
+
+		allowed := false
+
+		switch a.currentUserRole(r) {
+		case "school":
+			var found int
+			err := a.db.QueryRow(`
+                SELECT 1 FROM class_profile c
+                JOIN school_profile s ON s.id = c.school_id
+                JOIN auth_user u ON u.id = s.user_id
+                WHERE c.id=? AND s.user_id=? AND u.is_active=1
+            `, classID, userID).Scan(&found)
+			allowed = err == nil
+
+		case "class":
+			session, err := a.store.Get(r, "itube_session")
+			if err == nil {
+				sessionClassID, ok := session.Values["class_id"].(int)
+				if ok && sessionClassID == classID {
+					var found int
+					err := a.db.QueryRow(`
+                        SELECT 1 FROM class_profile c
+                        JOIN auth_user u ON u.username=c.class_teacher
+                        WHERE c.id=? AND u.id=? AND u.is_active=1
+                    `, classID, userID).Scan(&found)
+					allowed = err == nil
+				}
+			}
+		}
+
+		if !allowed {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+	}
 	classIDStr := r.URL.Query().Get("class_id")
 	classID, err := strconv.Atoi(classIDStr)
 	if err != nil || classID == 0 {
