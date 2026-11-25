@@ -934,10 +934,9 @@ func (a *App) schoolLoginHandler(w http.ResponseWriter, r *http.Request) {
 		a.render(w, r, "auth.html", map[string]any{"Error": "Maktab topilmadi."})
 		return
 	}
-	num := extractNumber(schoolName)
-	schoolPassword := num + "maktab"
-
-	if password == schoolPassword {
+	var storedHash string
+	hashErr := a.db.QueryRow(`SELECT password FROM auth_user WHERE id=? AND role='school' AND is_active=1 AND is_staff=0`, schoolUserID).Scan(&storedHash)
+	if hashErr == nil && djangoCheckPassword(storedHash, password) {
 		var userID int
 		var username string
 		var isStaff int
@@ -970,7 +969,9 @@ func (a *App) schoolLoginHandler(w http.ResponseWriter, r *http.Request) {
 		if err := rows.Scan(&cid, &cname, &cteacher); err != nil {
 			continue
 		}
-		if password == cname+"sinf" {
+		var storedHash string
+		hashErr := a.db.QueryRow(`SELECT password FROM auth_user WHERE username=? AND role='class' AND is_active=1 AND is_staff=0`, cteacher).Scan(&storedHash)
+		if hashErr == nil && djangoCheckPassword(storedHash, password) {
 			matchedTeacher = cteacher
 			matchedClassID = cid
 			break
