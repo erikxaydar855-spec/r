@@ -133,6 +133,10 @@
       .video-grid { grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 12px; }
     }
     @media (max-width: 480px) { .video-grid { grid-template-columns: 1fr; } }
+    /* Upload shortcut for staff and video uploaders */
+  .itube-video-upload-link { background:#e9f2ff; color:#1d4ed8; margin:6px 8px; width:calc(100% - 16px); border-radius:11px; font-weight:700; }
+  .itube-video-upload-link:hover { background:#dbeafe; color:#1e40af; }
+  .itube-video-upload-link i { color:#2563eb; }
   </style>
 </head>
 <body>
@@ -152,12 +156,15 @@
         <div class="dropdown" id="avatarDropdown">
           <div class="dropdown-username"><i class="fas fa-user"></i> {{ .Username }}</div>
           {{ if .IsStaff }}
-            <a href="/admin/videos" class="dropdown-item"><i class="fas fa-tachometer-alt"></i> Admin panel</a>
+            <a href="/admin/dashboard" class="dropdown-item"><i class="fas fa-tachometer-alt"></i> Admin panel</a>
             <a href="/admin/schools" class="dropdown-item"><i class="fas fa-school"></i> Maktablar</a>
           {{ else if eq .Role "school" }}
             <a href="/myclasses" class="dropdown-item"><i class="fas fa-school"></i> Mening sinflarim</a>
           {{ end }}
-          <a href="/profile" class="dropdown-item"><i class="fas fa-user-cog"></i> Profil sozlamalari</a>
+          {{ if or .IsStaff (eq .Role "uploader") }}
+<a id="itube-video-upload-link" href="/admin/videos#new-video" class="dropdown-item itube-video-upload-link"><i class="fas fa-circle-plus"></i> Video qo&#8216;shish</a>
+{{ end }}
+<a href="/profile" class="dropdown-item"><i class="fas fa-user-cog"></i> Profil sozlamalari</a>
           <div class="dropdown-divider"></div>
           <a href="/logout" class="dropdown-item"><i class="fas fa-sign-out-alt"></i> Chiqish</a>
         </div>

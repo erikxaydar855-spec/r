@@ -58,7 +58,78 @@
       margin-bottom: 16px; font-size: 13px;
       display: flex; align-items: center; gap: 8px;
     }
+    /* Same glass visual language as the new sign-in page. */
+    body {background:radial-gradient(circle at 12% 8%,rgba(57,126,245,.33),transparent 32%),radial-gradient(circle at 90% 85%,rgba(32,176,216,.25),transparent 35%),linear-gradient(135deg,#070f26,#132d4b);}
+    .container {background:rgba(245,249,255,.84);backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);border:1px solid rgba(255,255,255,.76);box-shadow:0 26px 72px rgba(0,0,0,.27);}
+    .form-group input:focus,.form-group select:focus{outline:0;border-color:#4287f5;box-shadow:0 0 0 4px rgba(66,135,245,.13)}
   </style>
+<style id="itube-eye-fix">
+.password-field,
+.password-wrap,
+.password-box,
+.input-with-eye,
+.password-input-wrap {
+    position: relative !important;
+}
+
+.password-field input,
+.password-wrap input,
+.password-box input,
+.input-with-eye input,
+.password-input-wrap input {
+    padding-right: 54px !important;
+}
+
+.password-field .toggle-password,
+.password-wrap .toggle-password,
+.password-box .toggle-password,
+.input-with-eye .toggle-password,
+.password-input-wrap .toggle-password,
+.password-field .password-toggle,
+.password-wrap .password-toggle,
+.password-box .password-toggle,
+.input-with-eye .password-toggle,
+.password-input-wrap .password-toggle,
+.password-field .eye-btn,
+.password-wrap .eye-btn,
+.password-box .eye-btn,
+.input-with-eye .eye-btn,
+.password-input-wrap .eye-btn {
+    position: absolute !important;
+    right: 12px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 32px !important;
+    height: 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    cursor: pointer !important;
+    z-index: 20 !important;
+    opacity: 0.85 !important;
+}
+
+.password-field .toggle-password i,
+.password-wrap .toggle-password i,
+.password-box .toggle-password i,
+.input-with-eye .toggle-password i,
+.password-input-wrap .toggle-password i,
+.password-field .password-toggle i,
+.password-wrap .password-toggle i,
+.password-box .password-toggle i,
+.input-with-eye .password-toggle i,
+.password-input-wrap .password-toggle i,
+.password-field .eye-btn i,
+.password-wrap .eye-btn i,
+.password-box .eye-btn i,
+.input-with-eye .eye-btn i,
+.password-input-wrap .eye-btn i {
+    pointer-events: none !important;
+}
+</style>
 </head>
 <body>
 <div class="container">
@@ -81,9 +152,28 @@
       <label>👤 Username</label>
       <input type="text" name="username" placeholder="Foydalanuvchi nomingiz" required minlength="3" autocomplete="username">
     </div>
+    <div class="form-group"><label>📧 Email (siz yoki ota-onangizniki)</label><input type="email" name="email" placeholder="example@gmail.com" autocomplete="email" required></div>
+    <div class="form-group"><label>📍 Viloyat</label>
+      <select name="region" required style="width:100%;padding:13px;border:2px solid #e2e8f0;border-radius:12px;background:#f8fafc;font-size:15px">
+        <option value="">Viloyatingizni tanlang</option>
+        <option value="Toshkent shahri">Toshkent shahri</option>
+        <option value="Toshkent">Toshkent</option>
+        <option value="Samarqand">Samarqand</option>
+        <option value="Buxoro">Buxoro</option>
+        <option value="Navoiy">Navoiy</option>
+        <option value="Farg'ona">Farg'ona</option>
+        <option value="Namangan">Namangan</option>
+        <option value="Andijon">Andijon</option>
+        <option value="Qashqadaryo">Qashqadaryo</option>
+        <option value="Surxondaryo">Surxondaryo</option>
+        <option value="Xorazm">Xorazm</option>
+        <option value="Qoraqalpog'iston">Qoraqalpog'iston</option>
+        <option value="Sirdaryo">Sirdaryo</option>
+        <option value="Jizzax">Jizzax</option>
+      </select></div>
     <div class="form-group">
       <label>🔒 Parol</label>
-      <input type="password" name="password" placeholder="Kamida 6 belgi" required minlength="6" autocomplete="new-password">
+      <input type="password" name="password" placeholder="Kamida 12 belgi" required minlength="12" autocomplete="new-password">
     </div>
     <button type="submit" class="btn-primary">Ro‘yxatdan o‘tish →</button>
   </form>
@@ -92,5 +182,6 @@
     Hisobingiz bormi? <a href="/auth">Kirish</a>
   </div>
 </div>
+<script src="/static/password-eye.js?v=1" defer></script>
 </body>
 </html>

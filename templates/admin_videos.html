@@ -63,9 +63,11 @@
       color: #166534;
     }
   </style>
+  <link rel="stylesheet" href="/static/admin2.css?v=1">
+  <script src="/static/admin2.js?v=1" defer></script>
 </head>
 
-<body>
+<body data-admin-role="{{ .Role }}">
   <div class="container-fluid p-0">
     <div class="row g-0">
       <div class="col-md-3 col-lg-2 sidebar">
@@ -75,6 +77,7 @@
         </div>
         <hr class="border-secondary">
         <nav class="nav flex-column">
+<a href="/admin/dashboard" class="nav-link"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
           <a href="/admin/videos" class="nav-link active"><i class="bi bi-collection-play"></i> Videolar</a>
           <a href="/admin/manage" class="nav-link"><i class="bi bi-building-gear"></i> Maktab va sinflar</a>
           <a href="/admin/schools" class="nav-link"><i class="bi bi-building"></i> Maktablar ro‘yxati</a>
@@ -111,33 +114,69 @@
           </div>
         </div>
 
-        <div class="card mb-4 shadow-sm">
+        {{ if .Added }}<div class="alert alert-success" role="status">Video saqlandi. Nashr holatini quyidagi royxatdan tekshiring.</div>{{ end }}
+        {{ if .UploaderCreated }}<div class="alert alert-success" role="status">Xodim hisobi yaratildi. Xodimga login va parolni xavfsiz tarzda bering.</div>{{ end }}
+        {{ if .UploaderDisabled }}<div class="alert alert-success" role="status">Xodim hisobi faoliyati to‘xtatildi.</div>{{ end }}
+        <div class="card mb-4 shadow-sm" id="new-video">
           <div class="card-header bg-white py-3">
-            <h5 class="mb-0"><i class="bi bi-plus-circle text-primary"></i> Yangi video qo‘shish</h5>
+            <h5 class="mb-1"><i class="bi bi-youtube text-danger"></i> YouTube orqali video qo‘shish</h5>
+            <small class="text-secondary">Havola → ma’lumotlarni olish → fan → saqlash. Video fayli serverga yuklanmaydi.</small>
           </div>
           <div class="card-body">
-            <form method="post" action="/admin/videos/add">
+            <form method="post" action="/admin/videos/add" id="admin2-video-form">
               <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
               <div class="row g-3">
-                <div class="col-md-6"><label class="form-label">Sarlavha</label><input type="text" name="title"
-                    class="form-control" required></div>
-                <div class="col-md-6"><label class="form-label">Kategoriya</label><select name="category_id"
-                    class="form-select">{{ range .Categories }}<option value="{{ .ID }}">{{ .Name }}</option>{{ end
-                    }}</select></div>
-                <div class="col-12"><label class="form-label">Tavsif</label><textarea name="body" class="form-control"
-                    rows="3"></textarea></div>
-                <div class="col-md-8"><label class="form-label">Video URL</label><input type="text" name="video_url"
-                    class="form-control"></div>
-                <div class="col-md-4"><label class="form-label">Holati</label><select name="status" class="form-select">
-                    <option value="DR">Qoralama</option>
-                    <option value="PB">Nashr etish</option>
-                  </select></div>
-                <div class="col-12"><button type="submit" class="btn btn-primary px-4">Qo‘shish</button></div>
+                <div class="col-12">
+                  <label for="video-url" class="form-label">1. YouTube havolasi</label>
+                  <div class="admin2-video-url-row">
+                    <input id="video-url" type="url" name="video_url" class="form-control" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" required>
+                    <button type="button" class="btn btn-outline-primary" id="admin2-fetch-meta"><i class="bi bi-magic"></i> Ma’lumotlarni olish</button>
+                  </div>
+                  <small id="admin2-meta-message" class="text-secondary" role="status" aria-live="polite">Havolani qo‘ying. Sarlavha va muqova imkon bo‘lsa avtomatik to‘ldiriladi.</small>
+                  <div class="admin2-youtube-preview" id="admin2-video-preview" hidden><img id="admin2-video-thumb" alt="Video muqovasi" loading="lazy"><div><b id="admin2-video-preview-title"></b><small id="admin2-video-preview-author"></small></div></div>
+                </div>
+                <div class="col-md-7">
+                  <label for="video-title" class="form-label">2. Sarlavha</label>
+                  <input id="video-title" type="text" name="title" class="form-control" maxlength="200" minlength="3" placeholder="Avtomatik to‘ldiriladi yoki qo‘lda yozing" required>
+                </div>
+                <div class="col-md-5">
+                  <label for="video-category" class="form-label">3. Fan</label>
+                  <select id="video-category" name="category_id" class="form-select" required>
+                    <option value="">— Fanni tanlang —</option>
+                    {{ range .Categories }}<option value="{{ .ID }}">{{ .Name }}</option>{{ end }}
+                  </select>
+                </div>
+                <div class="col-12"><label for="video-body" class="form-label">Tavsif (ixtiyoriy)</label><textarea id="video-body" name="body" class="form-control" rows="2" placeholder="Bu darsda nimalar o‘rganiladi?"></textarea></div>
+                {{ if or .IsStaff (eq .Role "uploader") }}
+                <div class="col-md-5"><label class="form-label">Nashr holati</label><select name="status" class="form-select"><option value="PB" {{ if eq .Role "uploader" }}selected{{ end }}>Nashr qilish</option><option value="DR" {{ if .IsStaff }}selected{{ end }}>Qoralama - keyin nashr qilish</option></select></div>
+                {{ else }}<div class="col-12"><div class="alert alert-info py-2 mb-0">Videongiz qoralama sifatida yuboriladi. Admin tekshirganidan keyin nashr qiladi.</div></div>{{ end }}
+                <div class="col-12"><button type="submit" class="btn btn-primary px-4" id="admin2-save-video"><i class="bi bi-check2-circle"></i> Videoni saqlash</button></div>
               </div>
             </form>
           </div>
         </div>
-
+        {{ if .IsStaff }}
+        <details class="card mb-4 admin2-uploader-setup" id="worker-access">
+          <summary class="card-header bg-white"><i class="bi bi-person-badge"></i> Xodim uchun video kiritish hisobi yaratish <small>(yangi videoni nashr qilish mumkin)</small></summary>
+          <div class="card-body">
+            <p class="text-secondary">Xodim yangi YouTube videolarini darhol nashr qilishi yoki qoralama saqlashi mumkin. Maktablar, foydalanuvchilar va eski videolarni tahrirlash yoki ochirish huquqi yoq.</p>
+            <form method="post" action="/admin/videos/uploader/add" class="row g-3">
+              <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
+              <div class="col-md-5"><label class="form-label">Xodim login nomi</label><input type="text" name="username" class="form-control" minlength="3" maxlength="32" pattern="[A-Za-z0-9_.-]+" autocomplete="off" required placeholder="masalan: video_operator"></div>
+              <div class="col-md-5"><label class="form-label">Xodim paroli (kamida 14 belgi)</label><input type="password" name="password" class="form-control" minlength="14" autocomplete="new-password" required></div>
+              <div class="col-md-2 d-flex align-items-end"><button type="submit" class="btn btn-primary w-100">Yaratish</button></div>
+            </form>
+            {{ if .Uploaders }}
+              <div class="mt-4"><h6>Video kirituvchi xodimlar</h6>
+              <div class="table-responsive"><table class="table table-sm"><thead><tr><th>Login</th><th>Holati</th><th>Harakat</th></tr></thead><tbody>
+                {{ range .Uploaders }}<tr><td>{{ .Username }}</td><td>{{ if .Active }}Faol{{ else }}To‘xtatilgan{{ end }}</td><td>
+                  {{ if .Active }}<form method="post" action="/admin/videos/uploader/disable/{{ .ID }}" onsubmit="return confirm('Xodim kirishini to‘xtatasizmi?')"><input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}"><button type="submit" class="btn btn-sm btn-outline-danger">Kirishni yopish</button></form>{{ else }}—{{ end }}
+                </td></tr>{{ end }}
+              </tbody></table></div></div>
+            {{ end }}
+          </div>
+        </details>
+        {{ end }}
         <div class="card shadow-sm">
           <div class="card-body p-0">
             <table class="table table-hover align-middle mb-0">
@@ -157,16 +196,16 @@
                   <td>#{{ .ID }}</td>
                   <td><a href="/video/{{ .Slug }}" target="_blank">{{ .Title }}</a></td>
                   <td>{{ .CategoryName }}</td>
-                  <td><span class="badge-status {{ if eq .Status " PB" }}badge-publish{{ else }}badge-draft{{ end }}">{{
+                  <td><span class="badge-status {{ if eq .Status "PB" }}badge-publish{{ else }}badge-draft{{ end }}">{{
                       if eq .Status "PB" }}Nashr{{ else }}Qoralama{{ end }}</span></td>
                   <td class="text-secondary">{{ .CreatedTime }}</td>
                   <td class="text-end">
-                    <a href="/admin/videos/edit/{{ .ID }}" class="btn btn-sm btn-outline-primary">Tahrirlash</a>
+                    {{ if $.IsStaff }}<a href="/admin/videos/edit/{{ .ID }}" class="btn btn-sm btn-outline-primary">Tahrirlash</a>
                     <form method="post" action="/admin/videos/delete/{{ .ID }}" style="display:inline"
                       onsubmit="return confirm('O‘chirishni tasdiqlaysizmi?')">
                       <input type="hidden" name="csrf_token" value="{{ $.CSRFToken }}">
                       <button type="submit" class="btn btn-sm btn-outline-danger">O‘chirish</button>
-                    </form>
+                    </form>{{ else }}<span class="text-secondary">Faqat ko‘rish</span>{{ end }}
                   </td>
                 </tr>
                 {{ else }}
@@ -181,6 +220,7 @@
       </div>
     </div>
   </div>
+<script src="/static/password-eye.js?v=1" defer></script>
 </body>
 
 </html>

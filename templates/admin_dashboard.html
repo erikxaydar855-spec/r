@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boshqaruv markazi — ITube Admin 2.0</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+<link rel="stylesheet" href="/static/admin2.css?v=1">
+<script src="/static/admin2.js?v=1" defer></script>
+</head>
+<body>
+<div class="container-fluid p-0">
+<div class="row g-0">
+<aside class="col-md-3 col-lg-2 sidebar">
+<div class="text-center text-white py-3"><h4><i class="bi bi-camera-video"></i> ITube</h4><small>Admin Panel 2.0</small></div>
+<hr class="border-secondary">
+<nav class="nav flex-column">
+<a href="/admin/dashboard" class="nav-link active"><i class="bi bi-grid-1x2-fill"></i> Dashboard</a>
+<a href="/admin/videos" class="nav-link"><i class="bi bi-collection-play"></i> Videolar</a>
+<a href="/admin/manage" class="nav-link"><i class="bi bi-building-gear"></i> Maktab va sinflar</a>
+<a href="/admin/schools" class="nav-link"><i class="bi bi-buildings"></i> Maktablar ro‘yxati</a>
+<a href="/admin/users" class="nav-link"><i class="bi bi-people"></i> Foydalanuvchilar</a>
+<a href="/" class="nav-link"><i class="bi bi-globe2"></i> Saytga o‘tish</a>
+<a href="/logout" class="nav-link"><i class="bi bi-box-arrow-right"></i> Chiqish</a>
+</nav>
+</aside>
+<main class="col-md-9 col-lg-10 main-content">
+<section class="admin2-hero" aria-labelledby="admin2-welcome">
+<div class="eyebrow"><i class="bi bi-stars" aria-hidden="true"></i> ITUBE / ADMIN PANEL 2.0</div>
+<h1 id="admin2-welcome">Boshqaruv markazi</h1>
+<p>Ta’lim platformangizdagi videolar, maktablar, sinflar va o‘quvchilar haqida asosiy ko‘rsatkichlar.</p>
+<div class="hero-actions"><a href="/admin/videos#new-video"><i class="bi bi-plus-circle"></i> Video qo‘shish</a><a href="/admin/manage#new-school" class="secondary"><i class="bi bi-building-add"></i> Maktab qo‘shish</a></div>
+</section>
+<section class="admin2-metrics" aria-label="Umumiy statistika">
+<article class="admin2-metric"><div class="metric-icon"><i class="bi bi-play-btn"></i></div><p class="metric-label">Jami videolar</p><p class="metric-value">{{ .TotalVideos }}</p><p class="metric-foot">Platformadagi barcha videolar</p></article>
+<article class="admin2-metric"><div class="metric-icon"><i class="bi bi-buildings"></i></div><p class="metric-label">Maktablar</p><p class="metric-value">{{ .SchoolCount }}</p><p class="metric-foot">Ro‘yxatga olingan maktablar</p></article>
+<article class="admin2-metric"><div class="metric-icon"><i class="bi bi-mortarboard"></i></div><p class="metric-label">Sinflar</p><p class="metric-value">{{ .ClassCount }}</p><p class="metric-foot">Jami sinf kabinetlari</p></article>
+<article class="admin2-metric"><div class="metric-icon"><i class="bi bi-people"></i></div><p class="metric-label">O‘quvchilar</p><p class="metric-value">{{ .StudentCount }}</p><p class="metric-foot">Sinflarga biriktirilgan o‘quvchilar</p></article>
+<article class="admin2-metric"><div class="metric-icon"><i class="bi bi-person-check"></i></div><p class="metric-label">Foydalanuvchilar</p><p class="metric-value">{{ .UserCount }}</p><p class="metric-foot">Ro‘yxatdan o‘tgan hisoblar</p></article>
+</section>
+<section class="admin2-panels">
+<div class="admin2-panel">
+<h2><i class="bi bi-clock-history" aria-hidden="true"></i> Oxirgi videolar</h2>
+<p class="panel-subtitle">So‘nggi qo‘shilgan videolar, yangilanish sanasi emas</p>
+<div class="admin2-video-list">
+{{ range .RecentVideos }}
+<div class="admin2-video-item">
+<div class="video-circle"><i class="bi bi-play-circle"></i></div>
+<div class="video-info"><a class="video-title" href="/admin/videos/edit/{{ .ID }}">{{ .Title }}</a><div class="video-date">{{ .Created }}</div></div>
+{{ if eq .Status "PB" }}<span class="state is-published">Nashr</span>{{ else }}<span class="state">Qoralama</span>{{ end }}
+</div>
+{{ else }}<div class="admin2-empty">Hali video qo‘shilmagan</div>{{ end }}
+</div>
+<div class="mt-3"><a class="btn btn-outline-primary btn-sm" href="/admin/videos">Barcha videolar <i class="bi bi-arrow-right"></i></a></div>
+</div>
+<div class="admin2-panel">
+<h2><i class="bi bi-bar-chart" aria-hidden="true"></i> Kontent holati</h2>
+<p class="panel-subtitle">Video nashr holatining umumiy ulushi</p>
+{{ if gt .TotalVideos 0 }}
+<div class="admin2-progress-label"><span>Nashr qilingan</span><span>{{ .PublicationPercent }}%</span></div>
+<div class="admin2-progress" role="progressbar" aria-label="Nashr qilingan videolar ulushi" aria-valuenow="{{ .PublicationPercent }}" aria-valuemin="0" aria-valuemax="100"><span style="width:{{ .PublicationPercent }}%;"></span></div>
+{{ else }}
+<div class="admin2-empty" id="itube-no-videos-yet">Hali video yo&#8216;q</div>
+{{ end }}
+<div class="admin2-substats"><div class="admin2-smallstat"><small>Nashr qilingan</small><b>{{ .PublishedCount }}</b></div><div class="admin2-smallstat"><small>Qoralama</small><b>{{ .DraftCount }}</b></div><div class="admin2-smallstat"><small>Kategoriyalar</small><b>{{ .CategoryCount }}</b></div></div>
+</div>
+</section>
+</main>
+</div>
+</div>
+</body>
+</html>

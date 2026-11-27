@@ -33,6 +33,73 @@
     .message.success { background: #dcfce7; color: #166534; display: block; }
     .message.error { background: #fee2e2; color: #b91c1c; display: block; }
   </style>
+<style id="itube-eye-fix">
+.password-field,
+.password-wrap,
+.password-box,
+.input-with-eye,
+.password-input-wrap {
+    position: relative !important;
+}
+
+.password-field input,
+.password-wrap input,
+.password-box input,
+.input-with-eye input,
+.password-input-wrap input {
+    padding-right: 54px !important;
+}
+
+.password-field .toggle-password,
+.password-wrap .toggle-password,
+.password-box .toggle-password,
+.input-with-eye .toggle-password,
+.password-input-wrap .toggle-password,
+.password-field .password-toggle,
+.password-wrap .password-toggle,
+.password-box .password-toggle,
+.input-with-eye .password-toggle,
+.password-input-wrap .password-toggle,
+.password-field .eye-btn,
+.password-wrap .eye-btn,
+.password-box .eye-btn,
+.input-with-eye .eye-btn,
+.password-input-wrap .eye-btn {
+    position: absolute !important;
+    right: 12px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 32px !important;
+    height: 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    cursor: pointer !important;
+    z-index: 20 !important;
+    opacity: 0.85 !important;
+}
+
+.password-field .toggle-password i,
+.password-wrap .toggle-password i,
+.password-box .toggle-password i,
+.input-with-eye .toggle-password i,
+.password-input-wrap .toggle-password i,
+.password-field .password-toggle i,
+.password-wrap .password-toggle i,
+.password-box .password-toggle i,
+.input-with-eye .password-toggle i,
+.password-input-wrap .password-toggle i,
+.password-field .eye-btn i,
+.password-wrap .eye-btn i,
+.password-box .eye-btn i,
+.input-with-eye .eye-btn i,
+.password-input-wrap .eye-btn i {
+    pointer-events: none !important;
+}
+</style>
 </head>
 <body>
 <div class="container">
@@ -58,7 +125,7 @@
 
   <div class="field-group">
     <label>👤 Username</label>
-    <input type="text" value="{{ .Username }}" disabled>
+    <input type="text" value="{{ if and (eq .Role "class") .SchoolOrClass }}{{ .SchoolOrClass }} sinf{{ else }}{{ .Username }}{{ end }}" disabled>
     <div class="info-text">Bu sizning tizimdagi asosiy nomingiz (o‘zgartirib bo‘lmaydi)</div>
   </div>
 
@@ -68,8 +135,42 @@
     <div class="info-text">Ro‘yxatdan o‘tgan maktab yoki sinf</div>
   </div>
 
+  {{if .Notice}}<div class="message success" style="display:block">{{.Notice}}</div>{{end}}
+  {{if ne .Role "class"}}
+  <h3 style="margin:26px 0 12px">📧 Aloqa va parolni tiklash</h3>
+  <p style="color:#64748b;margin-bottom:12px">Email tasdiqlangach, parolni unutganingizda unga kod yuboriladi.</p>
+  <form method="post" action="/profile/contact">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="field-group"><label>Email</label><input type="email" name="email" value="{{.Email}}" autocomplete="email" required></div>
+    <div class="field-group"><label>Viloyat</label><select name="region" required style="width:100%;padding:13px;border:2px solid #e2e8f0;border-radius:12px">
+      <option value="">Tanlang</option>
+      <option value="Toshkent shahri" {{if eq .Region "Toshkent shahri"}}selected{{end}}>Toshkent shahri</option>
+      <option value="Toshkent" {{if eq .Region "Toshkent"}}selected{{end}}>Toshkent</option>
+      <option value="Samarqand" {{if eq .Region "Samarqand"}}selected{{end}}>Samarqand</option>
+      <option value="Buxoro" {{if eq .Region "Buxoro"}}selected{{end}}>Buxoro</option>
+      <option value="Navoiy" {{if eq .Region "Navoiy"}}selected{{end}}>Navoiy</option>
+      <option value="Farg'ona" {{if eq .Region "Farg'ona"}}selected{{end}}>Farg'ona</option>
+      <option value="Namangan" {{if eq .Region "Namangan"}}selected{{end}}>Namangan</option>
+      <option value="Andijon" {{if eq .Region "Andijon"}}selected{{end}}>Andijon</option>
+      <option value="Qashqadaryo" {{if eq .Region "Qashqadaryo"}}selected{{end}}>Qashqadaryo</option>
+      <option value="Surxondaryo" {{if eq .Region "Surxondaryo"}}selected{{end}}>Surxondaryo</option>
+      <option value="Xorazm" {{if eq .Region "Xorazm"}}selected{{end}}>Xorazm</option>
+      <option value="Qoraqalpog'iston" {{if eq .Region "Qoraqalpog'iston"}}selected{{end}}>Qoraqalpog'iston</option>
+      <option value="Sirdaryo" {{if eq .Region "Sirdaryo"}}selected{{end}}>Sirdaryo</option>
+      <option value="Jizzax" {{if eq .Region "Jizzax"}}selected{{end}}>Jizzax</option>
+    </select></div>
+    <div class="field-group"><label>Emailni o‘zgartirish uchun joriy parolingiz</label><input type="password" name="current_password" required autocomplete="current-password"></div>
+    <button class="btn-primary" type="submit">Email va viloyatni saqlash</button>
+  </form>
+  <div style="padding:18px 0;color:#475569">Email holati: <b>{{if .EmailVerified}}✅ Tasdiqlangan{{else}}⚠️ Tasdiqlanmagan{{end}}</b></div>
+  {{if not .EmailVerified}}
+  <form method="post" action="/profile/email/send"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><button class="btn-primary" type="submit">Tasdiqlash kodini yuborish</button></form>
+  <form method="post" action="/profile/email/verify" style="margin-top:14px"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><div class="field-group"><label>Emailga kelgan 6 xonali kod</label><input name="code" inputmode="numeric" pattern="[0-9]{6}" required></div><button class="btn-primary" type="submit">Emailni tasdiqlash</button></form>
+  {{end}}
+  {{end}}
+  {{if or (eq .Role "school") .IsStaff }}<div style="margin:18px 0"><a href="/school/classes" class="back-link">🏫 Sinflarni tahrirlash →</a></div>{{end}}
   <div class="field-group"><label>🔒 Joriy parol</label><input type="password" id="currentPassword" placeholder="Joriy parol"></div>
-  <div class="field-group"><label>🔒 Yangi parol</label><input type="password" id="newPassword" placeholder="Yangi parol (6+ belgi)"></div>
+  <div class="field-group"><label>🔒 Yangi parol</label><input type="password" id="newPassword" placeholder="Yangi parol (12+ belgi)"></div>
   <div class="field-group"><label>🔒 Yangi parolni tasdiqlang</label><input type="password" id="confirmPassword" placeholder="Yangi parolni qayta kiriting"></div>
 
   <button id="updatePasswordBtn" class="btn-primary">Parolni yangilash</button>
@@ -88,6 +189,7 @@
 
 <script>
   (function() {
+    const csrfToken = {{ .CSRFToken }};
     const avatarInput = document.getElementById('avatarInput');
     const uploadBtn = document.getElementById('uploadAvatarBtn');
     const avatarPreview = document.getElementById('avatarPreview');
@@ -129,11 +231,11 @@
       const newP = document.getElementById('newPassword').value;
       const confirm = document.getElementById('confirmPassword').value;
       if (!current || !newP || !confirm) { showMessage('Barcha maydonlarni toʻldiring.', 'error'); return; }
-      if (newP.length < 6) { showMessage('Yangi parol kamida 6 belgi.', 'error'); return; }
+      if (newP.length < 12) { showMessage('Yangi parol kamida 12 belgi.', 'error'); return; }
       if (newP !== confirm) { showMessage('Parollar mos kelmadi.', 'error'); return; }
       fetch('/profile/password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
         body: JSON.stringify({ current: current, new: newP })
       })
         .then(res => res.json())
@@ -160,7 +262,7 @@
         };
         fetch('/profile/class', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
           body: JSON.stringify(data)
         })
           .then(res => res.json())
@@ -173,5 +275,6 @@
     }
   })();
 </script>
+<script src="/static/password-eye.js?v=1" defer></script>
 </body>
 </html>

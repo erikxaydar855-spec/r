@@ -13,12 +13,14 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/sessions"
@@ -109,6 +111,7 @@ type User struct {
 	Username string
 	Password string
 	Email    string
+	EmailVerified bool
 	Region   string
 	Role     string
 	IsStaff  bool
@@ -163,9 +166,40 @@ type UserProgress struct {
 }
 
 // ===== TEMPLATE FUNCTIONS =====
-func isYouTube(url string) bool {
-	return strings.Contains(url, "youtube.com") || strings.Contains(url, "youtu.be")
+// itubeYouTubeID accepts genuine YouTube video URLs only (not lookalike hosts).
+func itubeYouTubeID(raw string) (string, bool) {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.User != nil {
+		return "", false
+	}
+	host := strings.ToLower(u.Hostname())
+	var id string
+	switch host {
+	case "youtu.be", "www.youtu.be":
+		id = strings.Trim(u.Path, "/")
+	case "youtube.com", "www.youtube.com", "m.youtube.com", "youtube-nocookie.com", "www.youtube-nocookie.com":
+		parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+		if len(parts) == 1 && parts[0] == "watch" {
+			id = u.Query().Get("v")
+		}
+		if len(parts) == 2 && (parts[0] == "shorts" || parts[0] == "live" || parts[0] == "embed") {
+			id = parts[1]
+		}
+	default:
+		return "", false
+	}
+	if len(id) != 11 {
+		return "", false
+	}
+	for _, r := range id {
+		if !((r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' || r == '-') {
+			return "", false
+		}
+	}
+	return id, true
 }
+
+func isYouTube(raw string) bool { _, ok := itubeYouTubeID(raw); return ok }
 
 func isVideoFile(url string) bool {
 	ext := []string{".mp4", ".webm", ".ogg", ".mov", ".avi", ".mkv"}
@@ -179,37 +213,8 @@ func isVideoFile(url string) bool {
 }
 
 func extractYouTubeID(rawURL string) string {
-	if strings.Contains(rawURL, "youtu.be") {
-		parts := strings.Split(rawURL, "/")
-		if len(parts) > 0 {
-			id := parts[len(parts)-1]
-			if idx := strings.IndexAny(id, "?&"); idx != -1 {
-				id = id[:idx]
-			}
-			return id
-		}
-	}
-	if strings.Contains(rawURL, "watch?v=") {
-		parts := strings.Split(rawURL, "v=")
-		if len(parts) > 1 {
-			id := parts[1]
-			if idx := strings.IndexAny(id, "?&"); idx != -1 {
-				id = id[:idx]
-			}
-			return id
-		}
-	}
-	if strings.Contains(rawURL, "/embed/") {
-		parts := strings.Split(rawURL, "/embed/")
-		if len(parts) > 1 {
-			id := parts[1]
-			if idx := strings.IndexAny(id, "?&"); idx != -1 {
-				id = id[:idx]
-			}
-			return id
-		}
-	}
-	return ""
+	id, _ := itubeYouTubeID(rawURL)
+	return id
 }
 
 func youtubeThumb(rawURL string) string {
@@ -329,6 +334,9 @@ func main() {
 	db := &DB{DB: rawDB}
 
 	if err := ensureSchema(db); err != nil {
+		log.Fatal(err)
+	}
+	if err := ensureAccountSchema(db); err != nil {
 		log.Fatal(err)
 	}
 	tmpl, err := parseTemplates("templates")
@@ -659,6 +667,7 @@ func (a *App) apiClassesHandler(w http.ResponseWriter, r *http.Request) {
 
 func (a *App) routes() http.Handler {
 	r := chi.NewRouter()
+	r.Use(a.accountGuard)
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 	r.Handle("/media/*", http.StripPrefix("/media/", http.FileServer(http.Dir("media"))))
 	r.Get("/admin/manage/schedule", a.adminScheduleHandler)
@@ -670,6 +679,9 @@ func (a *App) routes() http.Handler {
 	r.Post("/auth/login", a.authLoginHandler)
 	r.Post("/auth/school-login", a.schoolLoginHandler)
 	r.Get("/account/register", a.registerGetHandler)
+	r.Get("/account/recover", a.accountRecoverPage)
+	r.Post("/account/recover/request", a.accountRecoverRequest)
+	r.Post("/account/recover/confirm", a.accountRecoverConfirm)
 	r.Post("/account/register", a.authRegisterHandler)
 	r.Get("/logout", a.logoutHandler)
 	r.Get("/logout/", a.logoutHandler)
@@ -688,11 +700,18 @@ func (a *App) routes() http.Handler {
 	r.Get("/profile", a.profileHandler)
 	r.Post("/profile/avatar", a.uploadAvatarHandler)
 	r.Post("/profile/password", a.updatePasswordHandler)
+	r.Post("/profile/contact", a.accountContactHandler)
+	r.Post("/profile/email/send", a.accountSendVerifyHandler)
+	r.Post("/profile/email/verify", a.accountVerifyHandler)
 	r.Post("/profile/class", a.updateClassHandler)
 
+	r.Get("/admin/dashboard", a.adminDashboardHandler)
 	r.Get("/admin/videos", a.adminVideosHandler)
 	r.Get("/admin/videos/", a.adminVideosHandler)
 	r.Post("/admin/videos/add", a.adminAddVideoHandler)
+	r.Get("/admin/videos/metadata", a.adminVideoMetadataHandler)
+	r.Post("/admin/videos/uploader/add", a.adminCreateUploaderHandler)
+	r.Post("/admin/videos/uploader/disable/{id}", a.adminDisableUploaderHandler)
 	r.Get("/admin/videos/edit/{id}", a.adminEditVideoHandler)
 	r.Get("/admin/videos/edit/{id}/", a.adminEditVideoHandler)
 	r.Post("/admin/videos/edit/{id}", a.adminUpdateVideoHandler)
@@ -711,6 +730,11 @@ func (a *App) routes() http.Handler {
 	r.Get("/admin/schools/{id}", a.adminSchoolDetailHandler)
 	r.Get("/admin/schools/{id}/", a.adminSchoolDetailHandler)
 
+	r.Get("/school/classes", a.classEditorPage)
+	r.Post("/school/classes/{id}/update", a.classEditorUpdate)
+	r.Post("/school/classes/{id}/students/add", a.classEditorStudentAdd)
+	r.Post("/school/classes/{id}/students/{studentID}/update", a.classEditorStudentUpdate)
+	r.Post("/school/classes/{id}/students/{studentID}/delete", a.classEditorStudentDelete)
 	r.Get("/myclasses", a.myClassesHandler)
 	r.Get("/myclasses/", a.myClassesHandler)
 
@@ -929,45 +953,29 @@ func (a *App) registerGetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) authRegisterHandler(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, "bad form", 400)
-		return
-	}
-	if !a.verifyCSRFToken(r) {
-		http.Error(w, "csrf", 400)
-		return
-	}
-	username := strings.TrimSpace(r.FormValue("username"))
-	password := r.FormValue("password")
-
-	if username == "" || len(password) < 6 {
-		a.render(w, r, "register.html", map[string]any{"Error": "Username kiriting va parol kamida 6 belgi boР Р†Р вЂљР’Вlishi kerak."})
-		return
-	}
-	var count int
-	a.db.QueryRow(`SELECT COUNT(*) FROM auth_user WHERE username=?`, username).Scan(&count)
-	if count > 0 {
-		a.render(w, r, "register.html", map[string]any{"Error": "Bu username allaqachon band."})
-		return
-	}
-	hashed, _ := djangoHashPassword(password, 720000)
-	var userID int
-	insertErr := a.db.QueryRow(`
-INSERT INTO auth_user (username, password, email, region, role, is_staff, is_active)
-VALUES (?, ?, '', '', 'user', 0, 1)
-RETURNING id
-`, username, hashed).Scan(&userID)
-	if insertErr != nil {
-		a.render(w, r, "register.html", map[string]any{"Error": "Xatolik yuz berdi."})
-		return
-	}
-	session, _ := a.store.Get(r, "itube_session")
-	session.Values["user_id"] = int(userID)
-	session.Values["username"] = username
-	session.Values["is_staff"] = false
-	session.Values["role"] = "user"
-	session.Save(r, w)
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+    if err:=r.ParseForm();err!=nil {http.Error(w,"bad form",400);return}
+    if !a.verifyCSRFToken(r) {http.Error(w,"csrf",403);return}
+    username:=strings.TrimSpace(r.FormValue("username"))
+    password:=r.FormValue("password")
+    email,validEmail:=accountEmail(r.FormValue("email"))
+    region,validRegion:=accountRegion(r.FormValue("region"))
+    if len([]rune(username))<3 || len([]rune(username))>80 || len([]rune(password))<12 || len(password)>256 || !validEmail || !validRegion {
+        a.render(w,r,"register.html",map[string]any{"Error":"Username 3+ belgi, parol 12+ belgi, email va viloyat talab qilinadi."});return
+    }
+    hash,err:=djangoHashPassword(password,720000)
+    if err!=nil {http.Error(w,"password error",500);return}
+    var id int
+    err=a.db.QueryRow(`INSERT INTO auth_user(username,password,email,region,role,is_staff,is_active,email_verified)
+      VALUES(?,?,?,?,'user',0,1,FALSE) RETURNING id`,username,hash,email,region).Scan(&id)
+    if err!=nil {a.render(w,r,"register.html",map[string]any{"Error":"Username band yoki ma'lumotlarni saqlashda xatolik."});return}
+    session,_:=a.store.Get(r,"itube_session")
+    session.Values["user_id"]=id
+    session.Values["username"]=username
+    session.Values["is_staff"]=false
+    session.Values["role"]="user"
+    session.Values["account_version"]=1
+    if err=session.Save(r,w);err!=nil {http.Error(w,"session",500);return}
+    http.Redirect(w,r,"/profile?notice=need-verify",303)
 }
 
 func (a *App) authLoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -1001,8 +1009,13 @@ func (a *App) authLoginHandler(w http.ResponseWriter, r *http.Request) {
 	session.Values["username"] = user.Username
 	session.Values["is_staff"] = isStaff == 1
 	session.Values["role"] = role
+    var accountVersion int
+    a.stampAccountSession(user.ID,&accountVersion)
+    session.Values["account_version"] = accountVersion
 	session.Save(r, w)
 	if isStaff == 1 {
+		http.Redirect(w, r, "/admin/dashboard", http.StatusSeeOther)
+	} else if role == "uploader" {
 		http.Redirect(w, r, "/admin/videos", http.StatusSeeOther)
 	} else {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -1061,6 +1074,9 @@ func (a *App) schoolLoginHandler(w http.ResponseWriter, r *http.Request) {
 	session.Values["user_id"] = userID
 	session.Values["username"] = username
 	session.Values["role"] = role
+    var accountVersion int
+    a.stampAccountSession(userID,&accountVersion)
+    session.Values["account_version"] = accountVersion
 	session.Values["is_staff"] = false
 	delete(session.Values, "class_id")
 	if role == "class" {
@@ -1557,7 +1573,20 @@ func (a *App) profileHandler(w http.ResponseWriter, r *http.Request) {
 		`, userID).Scan(&className, &classNum, &classLetter, &classLeader)
 		schoolOrClass = className
 	}
-	a.render(w, r, "profile.html", map[string]any{
+	var emailVerified bool
+    _=a.db.QueryRow(`SELECT email_verified FROM auth_user WHERE id=?`,userID).Scan(&emailVerified)
+    notice:=""
+    switch r.URL.Query().Get("notice") {
+    case "saved":notice="Ma'lumot saqlandi. Emailni tasdiqlang."
+    case "verified":notice="Email tasdiqlandi."
+    case "sent":notice="Tasdiqlash kodi emailga yuborildi."
+    case "wrong-code":notice="Kod noto'g'ri yoki muddati tugagan."
+    case "need-email","need-verify":notice="Parolni tiklash uchun emailingizni tasdiqlang."
+    case "mail-error":notice="Xat yuborilmadi. SMTP sozlamalarini tekshiring yoki keyin qayta urinib ko'ring."
+    }
+    a.render(w, r, "profile.html", map[string]any{
+        "Email":user.Email,"Region":user.Region,"EmailVerified":emailVerified,"Notice":notice,
+
 		"Username": user.Username, "Avatar": avatar,
 		"SchoolOrClass": schoolOrClass, "Role": role,
 		"ClassNumber": classNum, "ClassLetter": classLetter, "ClassLeader": classLeader,
@@ -1600,33 +1629,26 @@ func (a *App) uploadAvatarHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) updatePasswordHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", 405)
-		return
-	}
-	userID, ok := a.currentUserID(r)
-	if !ok {
-		http.Error(w, "unauthorized", 401)
-		return
-	}
-	var payload struct {
-		Current string `json:"current"`
-		New     string `json:"new"`
-	}
-	json.NewDecoder(r.Body).Decode(&payload)
-	var hashed string
-	a.db.QueryRow(`SELECT password FROM auth_user WHERE id=?`, userID).Scan(&hashed)
-	if !djangoCheckPassword(hashed, payload.Current) {
-		writeJSON(w, map[string]any{"status": "error", "error": "Joriy parol noto'g'ri"})
-		return
-	}
-	if len(payload.New) < 6 {
-		writeJSON(w, map[string]any{"status": "error", "error": "Yangi parol 6+ belgi"})
-		return
-	}
-	newHashed, _ := djangoHashPassword(payload.New, 720000)
-	a.db.Exec(`UPDATE auth_user SET password=? WHERE id=?`, newHashed, userID)
-	writeJSON(w, map[string]any{"status": "ok"})
+    userID,ok:=a.currentUserID(r);if !ok {http.Error(w,"unauthorized",401);return}
+    session,_:=a.store.Get(r,"itube_session")
+    expected,_:=session.Values["csrf_token"].(string)
+    if expected=="" || r.Header.Get("X-CSRF-Token")!=expected {http.Error(w,"csrf",403);return}
+    var payload struct { Current string `json:"current"`; New string `json:"new"` }
+    if err:=json.NewDecoder(http.MaxBytesReader(w,r.Body,8192)).Decode(&payload);err!=nil {http.Error(w,"json",400);return}
+    if len([]rune(payload.New))<12 || len(payload.New)>256 || (a.currentUserIsStaff(r) && len([]rune(payload.New))<16) {
+        writeJSON(w,map[string]any{"status":"error","error":"Parol kamida 12 belgi, admin uchun 16 belgi bo'lsin."});return
+    }
+    var oldHash string
+    if err:=a.db.QueryRow(`SELECT password FROM auth_user WHERE id=?`,userID).Scan(&oldHash);err!=nil || !djangoCheckPassword(oldHash,payload.Current) {
+        writeJSON(w,map[string]any{"status":"error","error":"Joriy parol noto'g'ri"});return
+    }
+    newHash,err:=djangoHashPassword(payload.New,720000);if err!=nil {http.Error(w,"hash",500);return}
+    if _,err=a.db.Exec(`UPDATE auth_user SET password=?,session_version=session_version+1 WHERE id=?`,newHash,userID);err!=nil {http.Error(w,"db",500);return}
+    var ver int
+    a.stampAccountSession(userID,&ver)
+    session.Values["account_version"]=ver
+    _=session.Save(r,w)
+    writeJSON(w,map[string]any{"status":"ok"})
 }
 
 func (a *App) updateClassHandler(w http.ResponseWriter, r *http.Request) {
@@ -1634,6 +1656,10 @@ func (a *App) updateClassHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", 405)
 		return
 	}
+    session,_:=a.store.Get(r,"itube_session")
+    csrf,_:=session.Values["csrf_token"].(string)
+    if csrf=="" || r.Header.Get("X-CSRF-Token")!=csrf {http.Error(w,"csrf",403);return}
+    if !a.currentUserIsStaff(r) && a.currentUserRole(r)!="school" {http.Error(w,"forbidden",403);return}
 	userID, ok := a.currentUserID(r)
 	if !ok {
 		http.Error(w, "unauthorized", 401)
@@ -1657,28 +1683,291 @@ func (a *App) updateClassHandler(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"status": "ok"})
 }
 
-// ===== ADMIN VIDEOS =====
-func (a *App) adminVideosHandler(w http.ResponseWriter, r *http.Request) {
+// adminDashboardHandler renders database-backed overview for authorized staff.
+func (a *App) adminDashboardHandler(w http.ResponseWriter, r *http.Request) {
 	if !a.currentUserIsStaff(r) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
-	videos, _ := a.allVideos()
-	cats, _ := a.allCategories()
-	total := len(videos)
-	pub, draft := 0, 0
+	var total, published, schools, classes, students, categories, users int
+	for _, metric := range []struct {
+		dest  *int
+		query string
+	}{
+		{&total, `SELECT COUNT(*) FROM news_app_new_video`},
+		{&published, `SELECT COUNT(*) FROM news_app_new_video WHERE status='PB'`},
+		{&schools, `SELECT COUNT(*) FROM school_profile`},
+		{&classes, `SELECT COUNT(*) FROM class_profile`},
+		{&students, `SELECT COUNT(*) FROM students`},
+		{&categories, `SELECT COUNT(*) FROM news_app_category`},
+		{&users, `SELECT COUNT(*) FROM auth_user WHERE role='user' AND is_staff=0`},
+	} {
+		if err := a.db.QueryRow(metric.query).Scan(metric.dest); err != nil {
+			log.Printf("dashboard metric query failed: %v", err)
+			http.Error(w, "Statistikani yuklashda xatolik", http.StatusInternalServerError)
+			return
+		}
+	}
+	type recentVideo struct {
+		ID      int
+		Title   string
+		Status  string
+		Created string
+	}
+	var recent []recentVideo
+	rows, err := a.db.Query(`
+		SELECT id, COALESCE(title,''), COALESCE(status,'DR'),
+		       COALESCE(TO_CHAR(created_time, 'DD.MM.YYYY'),'—')
+		FROM news_app_new_video
+		ORDER BY created_time DESC NULLS LAST, id DESC LIMIT 6
+	`)
+	if err != nil {
+		log.Printf("dashboard recent videos query failed: %v", err)
+		http.Error(w, "Videolarni yuklashda xatolik", http.StatusInternalServerError)
+		return
+	}
+	for rows.Next() {
+		var video recentVideo
+		if err := rows.Scan(&video.ID, &video.Title, &video.Status, &video.Created); err != nil {
+			rows.Close()
+			log.Printf("dashboard recent video scan failed: %v", err)
+			http.Error(w, "Videolarni o‘qishda xatolik", http.StatusInternalServerError)
+			return
+		}
+		recent = append(recent, video)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		log.Printf("dashboard recent videos iterator failed: %v", err)
+		http.Error(w, "Videolarni o‘qishda xatolik", http.StatusInternalServerError)
+		return
+	}
+	rows.Close()
+	publicationPercent := 0
+	if total > 0 {
+		publicationPercent = published * 100 / total
+	}
+	a.render(w, r, "admin_dashboard.html", map[string]any{
+		"TotalVideos": total, "PublishedCount": published, "DraftCount": total - published,
+		"SchoolCount": schools, "ClassCount": classes, "StudentCount": students,
+		"CategoryCount": categories, "UserCount": users,
+		"PublicationPercent": publicationPercent, "RecentVideos": recent,
+	})
+}
+
+// ===== ADMIN VIDEOS =====
+// Make safe, stable, unique URLs without breaking Uzbek or Russian title letters.
+func itubeVideoSlug(title string, id int64) string {
+	var b strings.Builder
+	lastDash := false
+	count := 0
+	for _, ch := range strings.ToLower(title) {
+		if count >= 75 {
+			break
+		}
+		if unicode.IsLetter(ch) || unicode.IsDigit(ch) {
+			b.WriteRune(ch)
+			lastDash = false
+			count++
+		} else if !lastDash {
+			b.WriteByte('-')
+			lastDash = true
+		}
+	}
+	base := strings.Trim(b.String(), "-")
+	if base == "" {
+		base = "video"
+	}
+	return fmt.Sprintf("%s-%d", base, id)
+}
+
+// Video uploaders can create and publish new videos, but cannot edit or delete.
+func (a *App) canSubmitVideo(r *http.Request) bool {
+	if a.currentUserIsStaff(r) {
+		return true
+	}
+	if a.currentUserRole(r) != "uploader" {
+		return false
+	}
+	id, loggedIn := a.currentUserID(r)
+	if !loggedIn {
+		return false
+	}
+	var active int
+	err := a.db.QueryRow(`SELECT is_active FROM auth_user WHERE id=? AND role='uploader'`, id).Scan(&active)
+	return err == nil && active == 1
+}
+
+func (a *App) adminVideosHandler(w http.ResponseWriter, r *http.Request) {
+	if !a.canSubmitVideo(r) {
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+	videos, err := a.allVideos()
+	if err != nil {
+		log.Printf("load videos: %v", err)
+		http.Error(w, "Videolarni yuklab bo'lmadi", 500)
+		return
+	}
+	cats, err := a.allCategories()
+	if err != nil {
+		log.Printf("load categories: %v", err)
+		http.Error(w, "Fanlarni yuklab bo'lmadi", 500)
+		return
+	}
+	type uploaderRow struct {
+		ID       int
+		Username string
+		Active   bool
+	}
+	uploaders := make([]uploaderRow, 0)
+	if a.currentUserIsStaff(r) {
+		rows, err := a.db.Query(`SELECT id, username, is_active FROM auth_user WHERE role='uploader' ORDER BY id DESC`)
+		if err != nil {
+			http.Error(w, "Xodimlar ro'yxati topilmadi", 500)
+			return
+		}
+		for rows.Next() {
+			var item uploaderRow
+			var active int
+			if err := rows.Scan(&item.ID, &item.Username, &active); err != nil {
+				rows.Close()
+				http.Error(w, "Xodimlar ro'yxatida xato", 500)
+				return
+			}
+			item.Active = active == 1
+			uploaders = append(uploaders, item)
+		}
+		err = rows.Err()
+		rows.Close()
+		if err != nil {
+			http.Error(w, "Xodimlar ro'yxatida xato", 500)
+			return
+		}
+	}
+	pub := 0
 	for _, v := range videos {
 		if v.Status == "PB" {
 			pub++
-		} else {
-			draft++
 		}
 	}
 	a.render(w, r, "admin_videos.html", map[string]any{
-		"Videos": videos, "Categories": cats,
-		"TotalVideos": total, "PublishedCount": pub, "DraftCount": draft,
+		"Videos": videos, "Categories": cats, "TotalVideos": len(videos),
+		"PublishedCount": pub, "DraftCount": len(videos) - pub,
+		"Uploaders":       uploaders,
+		"Added":           r.URL.Query().Get("added") == "1",
+		"UploaderCreated": r.URL.Query().Get("worker") == "ok" && a.currentUserIsStaff(r),
 	})
 }
+
+// Fetched only from a fixed YouTube endpoint, so user-provided URLs cannot trigger SSRF.
+func (a *App) adminVideoMetadataHandler(w http.ResponseWriter, r *http.Request) {
+	if !a.canSubmitVideo(r) {
+		http.Error(w, "Ruxsat yo'q", http.StatusForbidden)
+		return
+	}
+	id, ok := itubeYouTubeID(r.URL.Query().Get("url"))
+	if !ok {
+		http.Error(w, "YouTube video havolasini kiriting", http.StatusBadRequest)
+		return
+	}
+	videoURL := "https://www.youtube.com/watch?v=" + id
+	metadataURL := "https://www.youtube.com/oembed?url=" + url.QueryEscape(videoURL) + "&format=json"
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, metadataURL, nil)
+	if err != nil {
+		http.Error(w, "Havola xatosi", 500)
+		return
+	}
+	client := &http.Client{Timeout: 7 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		http.Error(w, "YouTube sarlavhasini olib bo'lmadi", http.StatusBadGateway)
+		return
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		http.Error(w, "Video ma'lumoti topilmadi, qo'lda kiriting", http.StatusBadGateway)
+		return
+	}
+	var meta struct {
+		Title  string `json:"title"`
+		Author string `json:"author_name"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 128*1024)).Decode(&meta); err != nil || strings.TrimSpace(meta.Title) == "" {
+		http.Error(w, "Sarlavhani qo'lda kiriting", http.StatusBadGateway)
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	writeJSON(w, map[string]string{
+		"title": meta.Title, "author": meta.Author, "video_url": videoURL,
+		"thumbnail": "https://img.youtube.com/vi/" + id + "/hqdefault.jpg",
+	})
+}
+
+// Admin creates a least-privilege account for a content employee.
+func (a *App) adminCreateUploaderHandler(w http.ResponseWriter, r *http.Request) {
+	if !a.currentUserIsStaff(r) {
+		http.Error(w, "Ruxsat yo'q", http.StatusForbidden)
+		return
+	}
+	if err := r.ParseForm(); err != nil || !a.verifyCSRFToken(r) {
+		http.Error(w, "Forma xavfsizlik xatosi", 400)
+		return
+	}
+	username := strings.TrimSpace(r.FormValue("username"))
+	password := r.FormValue("password")
+	if len(username) < 3 || len(username) > 32 || len(password) < 14 || len(password) > 256 {
+		http.Error(w, "Login 3-32, parol kamida 14 belgi bo'lishi kerak", 400)
+		return
+	}
+	for _, ch := range username {
+		if !((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-' || ch == '.') {
+			http.Error(w, "Login uchun faqat lotin harf, raqam, _ . - ishlating", 400)
+			return
+		}
+	}
+	hash, err := djangoHashPassword(password, 720000)
+	if err != nil {
+		http.Error(w, "Parol xatosi", 500)
+		return
+	}
+	_, err = a.db.Exec(`INSERT INTO auth_user(username,password,email,region,role,is_staff,is_active)
+        VALUES (?,?,'','','uploader',0,1)`, username, hash)
+	if err != nil {
+		log.Printf("create uploader failed: %v", err)
+		http.Error(w, "Login band yoki bazada xato", 409)
+		return
+	}
+	http.Redirect(w, r, "/admin/videos?worker=ok", http.StatusSeeOther)
+}
+
+func (a *App) adminDisableUploaderHandler(w http.ResponseWriter, r *http.Request) {
+	if !a.currentUserIsStaff(r) {
+		http.Error(w, "Ruxsat yo'q", http.StatusForbidden)
+		return
+	}
+	if err := r.ParseForm(); err != nil || !a.verifyCSRFToken(r) {
+		http.Error(w, "CSRF xatosi", 400)
+		return
+	}
+	id, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil || id < 1 {
+		http.Error(w, "Xodim topilmadi", 400)
+		return
+	}
+	res, err := a.db.Exec(`UPDATE auth_user SET is_active=0 WHERE id=? AND role='uploader' AND is_staff=0`, id)
+	if err != nil {
+		http.Error(w, "Xodim hisobi to'xtatilmadi", 500)
+		return
+	}
+	count, _ := res.RowsAffected()
+	if count == 0 {
+		http.Error(w, "Xodim topilmadi", 404)
+		return
+	}
+	http.Redirect(w, r, "/admin/videos?worker=disabled", http.StatusSeeOther)
+}
+
 func (a *App) allVideos() ([]Video, error) {
 	rows, err := a.db.Query(`
 		SELECT v.id, v.title, v.slug, v.body, v.video_url, v.image, v.status, v.created_time, c.id, c.name
@@ -1693,45 +1982,76 @@ func (a *App) allVideos() ([]Video, error) {
 	for rows.Next() {
 		var v Video
 		var img, url sql.NullString
-		rows.Scan(&v.ID, &v.Title, &v.Slug, &v.Body, &url, &img, &v.Status, &v.CreatedTime, &v.CategoryID, &v.CategoryName)
+		if err := rows.Scan(&v.ID, &v.Title, &v.Slug, &v.Body, &url, &img, &v.Status, &v.CreatedTime, &v.CategoryID, &v.CategoryName); err != nil {
+			return nil, err
+		}
 		v.VideoURL = url.String
 		v.Image = img.String
 		videos = append(videos, v)
 	}
-	return videos, nil
+	return videos, rows.Err()
 }
 func (a *App) adminAddVideoHandler(w http.ResponseWriter, r *http.Request) {
-	if !a.currentUserIsStaff(r) {
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+	if !a.canSubmitVideo(r) {
+		http.Error(w, "Ruxsat yo'q", http.StatusForbidden)
 		return
 	}
-	r.ParseForm()
-	if !a.verifyCSRFToken(r) {
-		http.Error(w, "csrf", 400)
+	if err := r.ParseForm(); err != nil || !a.verifyCSRFToken(r) {
+		http.Error(w, "Forma xavfsizlik xatosi", 400)
 		return
 	}
 	title := strings.TrimSpace(r.FormValue("title"))
 	body := strings.TrimSpace(r.FormValue("body"))
-	videoURL := strings.TrimSpace(r.FormValue("video_url"))
-	categoryID := r.FormValue("category_id")
-	status := r.FormValue("status")
-	if status == "" {
-		status = "DR"
-	}
-	slug := slugify(title)
-	imageURL := ""
-	if isYouTube(videoURL) {
-		imageURL = youtubeThumb(videoURL)
-	}
-	_, err := a.db.Exec(`
-		INSERT INTO news_app_new_video (title, slug, body, video_url, image, category_id, status, created_time)
-		VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
-	`, title, slug, body, videoURL, imageURL, categoryID, status)
-	if err != nil {
-		http.Error(w, err.Error(), 500)
+	rawURL := strings.TrimSpace(r.FormValue("video_url"))
+	catID, err := strconv.Atoi(r.FormValue("category_id"))
+	if err != nil || catID < 1 || len([]rune(title)) < 3 || len([]rune(title)) > 200 || len(body) > 8000 {
+		http.Error(w, "Sarlavha, fan yoki tavsif noto'g'ri", 400)
 		return
 	}
-	http.Redirect(w, r, "/admin/videos", http.StatusSeeOther)
+	id, ok := itubeYouTubeID(rawURL)
+	if !ok {
+		http.Error(w, "Hozircha YouTube video havolasini kiriting", 400)
+		return
+	}
+	normalizedURL := "https://www.youtube.com/watch?v=" + id
+	status := "DR" // An authorized video submitter may choose to publish.
+	if r.FormValue("status") == "PB" {
+		status = "PB"
+	}
+	var exists bool
+	if err := a.db.QueryRow(`SELECT EXISTS(SELECT 1 FROM news_app_new_video WHERE video_url=?)`, normalizedURL).Scan(&exists); err != nil {
+		http.Error(w, "Takrorni tekshirib bo'lmadi", 500)
+		return
+	}
+	if exists {
+		http.Error(w, "Bu YouTube video allaqachon qo'shilgan", 409)
+		return
+	}
+	tx, err := a.db.DB.BeginTx(r.Context(), nil)
+	if err != nil {
+		http.Error(w, "Baza xatosi", 500)
+		return
+	}
+	defer tx.Rollback()
+	var videoID int64
+	err = tx.QueryRowContext(r.Context(), `INSERT INTO news_app_new_video(title,slug,body,video_url,image,category_id,status,created_time)
+        VALUES ($1,'',$2,$3,$4,$5,$6,NOW()) RETURNING id`, title, body, normalizedURL,
+		"https://img.youtube.com/vi/"+id+"/hqdefault.jpg", catID, status).Scan(&videoID)
+	if err != nil {
+		log.Printf("insert video: %v", err)
+		http.Error(w, "Video qo'shilmadi; fan tanlanganini tekshiring", 500)
+		return
+	}
+	slug := itubeVideoSlug(title, videoID)
+	if _, err = tx.ExecContext(r.Context(), `UPDATE news_app_new_video SET slug=$1 WHERE id=$2`, slug, videoID); err != nil {
+		http.Error(w, "Video manzili saqlanmadi", 500)
+		return
+	}
+	if err = tx.Commit(); err != nil {
+		http.Error(w, "Saqlash xatosi", 500)
+		return
+	}
+	http.Redirect(w, r, "/admin/videos?added=1", http.StatusSeeOther)
 }
 func (a *App) adminEditVideoHandler(w http.ResponseWriter, r *http.Request) {
 	if !a.currentUserIsStaff(r) {
@@ -1759,7 +2079,7 @@ func (a *App) adminUpdateVideoHandler(w http.ResponseWriter, r *http.Request) {
 	videoURL := strings.TrimSpace(r.FormValue("video_url"))
 	categoryID := r.FormValue("category_id")
 	status := r.FormValue("status")
-	slug := slugify(title)
+	slug := itubeVideoSlug(title, int64(id))
 	imageURL := ""
 	if isYouTube(videoURL) {
 		imageURL = youtubeThumb(videoURL)
@@ -2383,29 +2703,39 @@ func (a *App) adminUsersHandler(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
-	rows, _ := a.db.Query(`
-		SELECT u.id, u.username, u.email, u.region, u.role,
-		       (SELECT COUNT(*) FROM user_progress WHERE user_id=u.id) as videos_watched,
-		       (SELECT AVG(watched_percent) FROM user_progress WHERE user_id=u.id) as avg_percent
-		FROM auth_user u WHERE u.role='user' AND u.is_staff=0 ORDER BY u.id DESC
-	`)
+	rows, err := a.db.Query(`SELECT u.id,u.username,u.email,u.email_verified,u.region,u.role,
+      (SELECT COUNT(*) FROM user_progress WHERE user_id=u.id) AS videos_watched,
+      (SELECT AVG(watched_percent) FROM user_progress WHERE user_id=u.id) AS avg_percent
+      FROM auth_user u WHERE u.role='user' AND u.is_staff=0 ORDER BY u.id DESC`)
+	if err != nil {
+		log.Printf("admin users query: %v", err)
+		http.Error(w, "Foydalanuvchilarni yuklab bo'lmadi", 500)
+		return
+	}
 	defer rows.Close()
 	type StudentInfo struct {
 		User
 		VideosWatched int
 		AvgPercent    int
 	}
-	var students []StudentInfo
+	users := make([]StudentInfo, 0)
 	for rows.Next() {
-		var s StudentInfo
+		var u StudentInfo
 		var avg sql.NullFloat64
-		rows.Scan(&s.ID, &s.Username, &s.Email, &s.Region, &s.Role, &s.VideosWatched, &avg)
-		if avg.Valid {
-			s.AvgPercent = int(avg.Float64)
+		if err := rows.Scan(&u.ID, &u.Username, &u.Email, &u.EmailVerified, &u.Region, &u.Role, &u.VideosWatched, &avg); err != nil {
+			http.Error(w, "Foydalanuvchilarni o'qishda xato", 500)
+			return
 		}
-		students = append(students, s)
+		if avg.Valid {
+			u.AvgPercent = int(avg.Float64)
+		}
+		users = append(users, u)
 	}
-	a.render(w, r, "admin_users.html", map[string]any{"Students": students})
+	if err := rows.Err(); err != nil {
+		http.Error(w, "Foydalanuvchilarni o'qishda xato", 500)
+		return
+	}
+	a.render(w, r, "admin_users.html", map[string]any{"Students": users})
 }
 
 // ===== HELPERS =====

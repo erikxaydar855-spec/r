@@ -313,6 +313,73 @@ body {
   .itube-layout .form-group input, .itube-layout .form-group select { min-height:50px; }
 }
 </style>
+<style id="itube-eye-fix">
+.password-field,
+.password-wrap,
+.password-box,
+.input-with-eye,
+.password-input-wrap {
+    position: relative !important;
+}
+
+.password-field input,
+.password-wrap input,
+.password-box input,
+.input-with-eye input,
+.password-input-wrap input {
+    padding-right: 54px !important;
+}
+
+.password-field .toggle-password,
+.password-wrap .toggle-password,
+.password-box .toggle-password,
+.input-with-eye .toggle-password,
+.password-input-wrap .toggle-password,
+.password-field .password-toggle,
+.password-wrap .password-toggle,
+.password-box .password-toggle,
+.input-with-eye .password-toggle,
+.password-input-wrap .password-toggle,
+.password-field .eye-btn,
+.password-wrap .eye-btn,
+.password-box .eye-btn,
+.input-with-eye .eye-btn,
+.password-input-wrap .eye-btn {
+    position: absolute !important;
+    right: 12px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 32px !important;
+    height: 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    cursor: pointer !important;
+    z-index: 20 !important;
+    opacity: 0.85 !important;
+}
+
+.password-field .toggle-password i,
+.password-wrap .toggle-password i,
+.password-box .toggle-password i,
+.input-with-eye .toggle-password i,
+.password-input-wrap .toggle-password i,
+.password-field .password-toggle i,
+.password-wrap .password-toggle i,
+.password-box .password-toggle i,
+.input-with-eye .password-toggle i,
+.password-input-wrap .password-toggle i,
+.password-field .eye-btn i,
+.password-wrap .eye-btn i,
+.password-box .eye-btn i,
+.input-with-eye .eye-btn i,
+.password-input-wrap .eye-btn i {
+    pointer-events: none !important;
+}
+</style>
 </head>
 <body>
 <div class="itube-layout">
@@ -368,6 +435,7 @@ body {
         <input type="password" name="password" placeholder="Parolingiz" required autocomplete="current-password">
       </div>
       <button type="submit" class="btn-primary">Kirish →</button>
+      <p style="margin-top:12px;text-align:center;font-size:13px"><a href="/account/recover">Parolni unutdingizmi?</a></p>
     </form>
     <div class="register-link">
       Ro‘yxatdan o‘tmagan bo‘lsangiz? <a href="/account/register">Ro‘yxatdan o‘tish</a>
@@ -406,6 +474,7 @@ body {
       </div>
 
       <button type="submit" class="btn-primary">Kirish →</button>
+      <p style="margin-top:12px;text-align:center;font-size:13px"><a href="/account/recover">Parolni unutdingizmi?</a></p>
     </form>
 
   </div>
@@ -507,5 +576,6 @@ body {
     loadSchools();
   })();
 </script>
+<script src="/static/password-eye.js?v=1" defer></script>
 </body>
 </html>

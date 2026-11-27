@@ -1,0 +1,90 @@
+<!doctype html><html lang="uz"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parolni tiklash – ITube</title>
+<style>
+*{box-sizing:border-box}body{font-family:Inter,system-ui,sans-serif;background:radial-gradient(circle at 20% 20%,#193b7b,#0a1429 65%);color:#142748;min-height:100vh;display:grid;place-items:center;margin:0;padding:20px}
+main{width:min(960px,100%);display:grid;grid-template-columns:1fr 1fr;gap:20px}.card{border:1px solid #d8e3f8;background:rgba(255,255,255,.94);backdrop-filter:blur(18px);border-radius:24px;padding:30px;box-shadow:0 18px 48px #020a214d}h1{color:#071e4e;margin:0 0 8px;font-size:25px}p{line-height:1.5;color:#566b8b;font-size:14px}label{font-weight:650;font-size:13px;display:block;margin:15px 0 6px}input{width:100%;border:1px solid #cddcf1;border-radius:12px;padding:13px;font-size:15px;background:#f8faff}button{margin-top:20px;width:100%;border:0;border-radius:12px;background:linear-gradient(110deg,#377ef3,#2258d6);color:white;padding:14px;font-weight:750;cursor:pointer}.alert{background:#e4efff;color:#15457c;padding:12px;border-radius:10px}.err{background:#ffe6e6;color:#942222}a{color:#2875e9;text-decoration:none}@media(max-width:760px){main{grid-template-columns:1fr}.card{padding:24px}}
+</style><style id="itube-eye-fix">
+.password-field,
+.password-wrap,
+.password-box,
+.input-with-eye,
+.password-input-wrap {
+    position: relative !important;
+}
+
+.password-field input,
+.password-wrap input,
+.password-box input,
+.input-with-eye input,
+.password-input-wrap input {
+    padding-right: 54px !important;
+}
+
+.password-field .toggle-password,
+.password-wrap .toggle-password,
+.password-box .toggle-password,
+.input-with-eye .toggle-password,
+.password-input-wrap .toggle-password,
+.password-field .password-toggle,
+.password-wrap .password-toggle,
+.password-box .password-toggle,
+.input-with-eye .password-toggle,
+.password-input-wrap .password-toggle,
+.password-field .eye-btn,
+.password-wrap .eye-btn,
+.password-box .eye-btn,
+.input-with-eye .eye-btn,
+.password-input-wrap .eye-btn {
+    position: absolute !important;
+    right: 12px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 32px !important;
+    height: 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    cursor: pointer !important;
+    z-index: 20 !important;
+    opacity: 0.85 !important;
+}
+
+.password-field .toggle-password i,
+.password-wrap .toggle-password i,
+.password-box .toggle-password i,
+.input-with-eye .toggle-password i,
+.password-input-wrap .toggle-password i,
+.password-field .password-toggle i,
+.password-wrap .password-toggle i,
+.password-box .password-toggle i,
+.input-with-eye .password-toggle i,
+.password-input-wrap .password-toggle i,
+.password-field .eye-btn i,
+.password-wrap .eye-btn i,
+.password-box .eye-btn i,
+.input-with-eye .eye-btn i,
+.password-input-wrap .eye-btn i {
+    pointer-events: none !important;
+}
+</style>
+</head><body><main>
+<section class="card"><h1>📧 Tiklash kodini olish</h1><p>Hisobingiz nomi va <b>oldindan tasdiqlangan</b> emailingizni kiriting. Kod 10 daqiqa amal qiladi.</p>
+{{if .Success}}<p class="alert">Agar ma’lumotlar mos bo‘lsa, emailga kod yuborildi. Pochtangizni tekshiring.</p>{{end}}
+<form action="/account/recover/request" method="post"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+<label>Username (maktab uchun maktab login nomi)</label><input name="username" required autocomplete="username" maxlength="120">
+<label>Tasdiqlangan email</label><input type="email" name="email" required autocomplete="email">
+<button type="submit">6 xonali kodni yuborish</button></form></section>
+<section class="card"><h1>🔐 Yangi parol o‘rnatish</h1><p>Emaildagi kodni kiriting. Maktab, admin va oddiy foydalanuvchi hisoblari tiklanadi. Sinf parolini maktab o‘zgartiradi.</p>
+{{if .Error}}<p class="alert err">{{.Error}}</p>{{end}}
+<form action="/account/recover/confirm" method="post"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+<label>Username</label><input name="username" required autocomplete="username" maxlength="120">
+<label>Tasdiqlangan email</label><input type="email" name="email" required autocomplete="email">
+<label>6 xonali kod</label><input name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required>
+<label>Yangi parol (12+ belgi, admin uchun 16+)</label><input type="password" name="new_password" minlength="12" required autocomplete="new-password">
+<label>Yangi parolni takrorlang</label><input type="password" name="confirm_password" minlength="12" required autocomplete="new-password">
+<button type="submit">Parolni yangilash</button></form><p><a href="/auth">← Kirishga qaytish</a></p></section>
+</main><script src="/static/password-eye.js?v=1" defer></script>
+</body></html>
